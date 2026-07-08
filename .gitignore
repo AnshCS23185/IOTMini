@@ -1,0 +1,35 @@
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Python
+backend/venv/
+backend/__pycache__/
+backend/**/*.pyc
+backend/.env
+
+# Environment Files
+.env
+*.env
+
+# IDE
+.idea/
+.vscode/
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Python cache
+*.pyo
+*.pyd
+
+# Build
+build/
+dist/
+
+# Misc
+*.sqlite3
