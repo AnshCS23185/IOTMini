@@ -1,111 +1,127 @@
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+@import "tailwindcss";
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+@theme {
+  /* Core PanelIQ Palette */
+  --color-paneliq-brown: #3B2823;
+  --color-paneliq-orange: #D59D80;
+  --color-paneliq-peach: #F1C6B3;
+  --color-paneliq-lavender: #C6C0D0;
+  --color-paneliq-teal: #104C64;
+  --color-paneliq-sage: #6C8F8A;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  /* Semantic Theme Variables */
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-border: var(--border);
+  
+  --color-primary: var(--primary);
+  --color-primary-text: var(--primary-text);
+  --color-secondary: var(--secondary);
+  --color-secondary-text: var(--secondary-text);
+  --color-accent: var(--accent);
+  
+  /* Status Variables */
+  --color-status-healthy: var(--status-healthy);
+  --color-status-attention: var(--status-attention);
+  --color-status-warning: var(--status-warning);
+  --color-status-error: var(--status-error);
+  --color-status-neutral: var(--status-neutral);
+  --color-status-info: var(--status-info);
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+  /* Typography */
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-display: 'Nohemi', 'Inter', system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+    /* LIGHT MODE */
+    --background: #FFFFFF;
+    --surface: #F8F7FA; /* Very light lavender tint instead of generic gray */
+    --text: #1a1a1a;
+    --text-muted: #6B6875; /* Lavender-tinted dark gray */
+    --border: #E8E6EC; /* Lavender-tinted light gray */
+    
+    --primary: #D59D80; /* Solar Orange */
+    --primary-text: #3B2823; /* Deep Brown */
+    
+    --secondary: #104C64; /* Deep Teal */
+    --secondary-text: #FFFFFF;
+    
+    --accent: #F1C6B3; /* Peach */
+    
+    --status-healthy: #6C8F8A; /* Sage Teal */
+    --status-attention: #D59D80; /* Solar Orange */
+    --status-warning: #3B2823; /* Deep Brown used for underperforming/error/offline */
+    --status-error: #3B2823; /* Deep Brown */
+    --status-neutral: #C6C0D0; /* Lavender */
+    --status-info: #104C64; /* Deep Teal */
+    
+    color-scheme: light;
   }
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
+  .dark {
+    /* DARK MODE */
+    --background: #000000; /* PURE BLACK */
+    --surface: #0C0C0C; /* Subtle black/dark elevation */
+    --text: #F9F9F9;
+    --text-muted: #A39EAC; /* Lavender-tinted muted text */
+    --border: #1F1F1F;
+    
+    --primary: #D59D80; /* Solar Orange */
+    --primary-text: #000000;
+    
+    --secondary: #104C64; /* Deep Teal */
+    --secondary-text: #FFFFFF;
+    
+    --accent: #F1C6B3; /* Peach */
+    
+    --status-healthy: #6C8F8A;
+    --status-attention: #D59D80;
+    --status-warning: #D59D80; /* Brighten deep brown to orange in dark mode if needed, or keep Deep Teal for contrast? Let's use #F1C6B3 (Peach) for warning visibility on black */
+    --status-error: #D59D80; /* Error states should pop. #3B2823 is too dark for black background. Using Solar Orange. */
+    --status-neutral: #C6C0D0;
+    --status-info: #104C64;
+    
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--text);
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Force only three font sizes globally */
+  h1, h2, h3 {
+    font-family: 'Nohemi', 'Inter', system-ui, sans-serif;
+    font-size: 1.5rem;
+    line-height: 2rem;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+  }
+  
+  p, span, div, input, button, label {
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+
+  small, .text-small {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
   }
 }
 
-body {
-  margin: 0;
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
-
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
+@layer utilities {
+  .compact-padding {
+    padding: 0.5rem;
   }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
+  .compact-margin {
+    margin: 0.5rem;
   }
-}
-p {
-  margin: 0;
-}
-
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
-
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
 }
