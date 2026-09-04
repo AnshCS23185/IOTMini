@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from app.database import get_db
 from app.core.dependencies import get_current_active_user
-from app.core.permissions import check_site_access
+from app.core.permissions import check_site_access, require_permission
 from app.models.user import User
 from app.models.site import Site
 from app.models.weather import WeatherReading
@@ -13,11 +13,11 @@ from app.services.openmeteo_service import OpenMeteoService
 router = APIRouter(tags=["Weather"])
 
 @router.get("/sites/{site_id}/weather", response_model=WeatherResponse)
-async def get_site_weather(site_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+async def get_site_weather(site_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_permission("DASHBOARD_VIEW"))):
     site = db.query(Site).filter(Site.id == site_id).first()
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
-    check_site_access(current_user, site)
+    check_site_access(current_user, site, db)
     
     # Check for recent cached weather (e.g. within last 15 minutes)
     recent_limit = datetime.utcnow() - timedelta(minutes=15)

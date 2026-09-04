@@ -2,8 +2,8 @@ import React from 'react';
 
 const createPlaceholder = (title, description) => () => (
   <div className="flex h-full w-full flex-col items-center justify-center p-8 text-center bg-surface border border-border rounded">
-    <h2 className="text-large font-display font-semibold text-text mb-2">{title}</h2>
-    <p className="text-medium text-text-muted">{description}</p>
+    <h2 className="text-section font-sans font-semibold text-txt mb-2">{title}</h2>
+    <p className="text-body text-txt-muted">{description}</p>
   </div>
 );
 

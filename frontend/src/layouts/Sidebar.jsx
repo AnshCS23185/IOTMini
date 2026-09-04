@@ -1,14 +1,8 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
-  LayoutDashboard, 
-  MapPin, 
-  Grid2X2, 
-  Activity, 
-  AlertTriangle, 
-  Cpu, 
-  Settings, 
-  Server
+  LayoutDashboard, MapPin, Grid2X2, Activity, 
+  AlertTriangle, Cpu, Settings, Server
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../utils/cn';
@@ -28,12 +22,11 @@ const navItems = [
 export const Sidebar = () => {
   const { user } = useAuth();
   const userRole = user?.role || 'USER';
-
   const visibleItems = navItems.filter(item => item.roles.includes(userRole.toUpperCase()));
 
   return (
-    <aside className="w-14 flex flex-col items-center py-4 bg-surface border-r border-border h-full flex-shrink-0 z-10 pt-6">
-      <nav className="flex flex-col gap-2 w-full px-2">
+    <aside className="w-[56px] flex flex-col items-center py-3 bg-surface border-r border-border h-full shrink-0 z-10">
+      <nav className="flex flex-col gap-1 w-full px-2">
         {visibleItems.map((item) => (
           <NavLink
             key={item.path}
@@ -41,15 +34,15 @@ export const Sidebar = () => {
             title={item.name}
             className={({ isActive }) =>
               cn(
-                'group relative flex items-center justify-center h-10 w-10 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-primary',
+                'group relative flex items-center justify-center h-9 w-9 mx-auto rounded-lg transition-colors cursor-pointer',
                 isActive 
-                  ? 'bg-primary text-primary-text' 
-                  : 'text-text-muted hover:bg-border/50 hover:text-text'
+                  ? 'bg-[#D59D80]/15 text-[#D59D80]' 
+                  : 'text-txt-muted hover:bg-surface-hover hover:text-txt'
               )
             }
           >
-            <item.icon className="h-5 w-5" />
-            <span className="absolute left-14 rounded bg-surface border border-border px-2 py-1 text-small font-medium text-text opacity-0 transition-opacity group-hover:opacity-100 pointer-events-none whitespace-nowrap shadow-sm z-50">
+            <item.icon className="h-[18px] w-[18px]" strokeWidth={1.8} />
+            <span className="absolute left-full ml-2.5 rounded-md bg-surface-elevated border border-border px-2.5 py-1 text-caption font-medium text-txt opacity-0 scale-95 transition-all duration-100 group-hover:opacity-100 group-hover:scale-100 pointer-events-none whitespace-nowrap shadow-xl z-50">
               {item.name}
             </span>
           </NavLink>

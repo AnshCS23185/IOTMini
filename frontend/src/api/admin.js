@@ -18,6 +18,9 @@ export const deleteUser = async (userId) => {
 export const getOrganizations = async () => {
   return apiClient('/organizations');
 };
+export const createOrganization = async (data) => {
+  return apiClient('/organizations', { method: 'POST', body: data }); // Let apiClient stringify if not FormData
+};
 
 // Sites
 export const createSite = async (data) => {

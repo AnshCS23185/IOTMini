@@ -24,6 +24,11 @@ export const apiClient = async (endpoint, { body, ...customConfig } = {}) => {
     if (body instanceof FormData) {
       config.body = body;
       delete config.headers['Content-Type'];
+    } else if (body instanceof URLSearchParams) {
+      config.body = body;
+      config.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+    } else if (typeof body === 'string') {
+      config.body = body;
     } else {
       config.body = JSON.stringify(body);
     }

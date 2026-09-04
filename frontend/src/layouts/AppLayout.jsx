@@ -11,7 +11,10 @@ export const AppLayout = () => {
   if (loading) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-background">
-        <div className="text-medium text-text-muted">Loading PanelIQ...</div>
+        <div className="flex flex-col items-center gap-2">
+          <div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+          <span className="text-small text-txt-muted">Loading...</span>
+        </div>
       </div>
     );
   }
@@ -25,7 +28,7 @@ export const AppLayout = () => {
       <Header />
       <div className="flex flex-1 min-h-0 overflow-hidden">
         <Sidebar />
-        <main className="flex-1 overflow-auto bg-background p-4 relative">
+        <main className="flex-1 overflow-auto bg-background p-6">
           <Outlet />
         </main>
       </div>

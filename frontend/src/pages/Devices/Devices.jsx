@@ -5,18 +5,19 @@ import { getSitePanels, getPanelDevice } from '../../api/panels';
 import { getDeviceStatus } from '../../api/iot';
 import { Loader2, Search, Filter } from 'lucide-react';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { Button } from '../../components/ui/Button';
 
 const formatLastSeen = (timestamp) => {
-  if (!timestamp) return 'Never connected';
+  if (!timestamp) return 'Never';
   const now = new Date();
   const ts = new Date(timestamp);
   const diffSecs = Math.floor((now - ts) / 1000);
   
-  if (diffSecs < 60) return `${diffSecs} sec ago`;
+  if (diffSecs < 60) return `${diffSecs}s ago`;
   const diffMins = Math.floor(diffSecs / 60);
-  if (diffMins < 60) return `${diffMins} min ago`;
+  if (diffMins < 60) return `${diffMins}m ago`;
   const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours} hr ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
   return ts.toLocaleString([], { month: 'short', day: 'numeric' });
 };
 
@@ -26,7 +27,7 @@ const Devices = () => {
   const [error, setError] = useState(null);
   
   const [sites, setSites] = useState([]);
-  const [devicesList, setDevicesList] = useState([]); // Array of { panel, site, device, status }
+  const [devicesList, setDevicesList] = useState([]);
   
   const [selectedSiteId, setSelectedSiteId] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -42,14 +43,11 @@ const Devices = () => {
 
       let aggregated = [];
 
-      // 1. Fetch Panels for each site
       for (const site of sitesList) {
         if (selectedSiteId !== 'ALL' && selectedSiteId !== site.id.toString()) continue;
         
         try {
           const panels = await getSitePanels(site.id);
-          
-          // 2. Fetch Device & Status for each Panel
           const devicePromises = panels.map(p => getPanelDevice(p.id).catch(() => null));
           const devResults = await Promise.all(devicePromises);
           
@@ -60,25 +58,14 @@ const Devices = () => {
             if (d && d.device_uid) {
               let s = null;
               try {
-                 s = await getDeviceStatus(d.device_uid);
+                s = await getDeviceStatus(d.device_uid);
               } catch (e) {
-                 // ignore status fetch fail
-                 s = { is_online: false, device_status: d.status || 'UNKNOWN' };
+                s = { is_online: false, device_status: d.status || 'UNKNOWN' };
               }
               
-              aggregated.push({
-                panel: p,
-                site: site,
-                device: d,
-                status: s
-              });
+              aggregated.push({ panel: p, site, device: d, status: s });
             } else {
-              aggregated.push({
-                panel: p,
-                site: site,
-                device: null,
-                status: null
-              });
+              aggregated.push({ panel: p, site, device: null, status: null });
             }
           }
         } catch (e) {
@@ -99,11 +86,9 @@ const Devices = () => {
   }, [selectedSiteId]);
 
   const filteredData = devicesList.filter(item => {
-    // Status Filter
     if (statusFilter === 'ONLINE' && !item.status?.is_online) return false;
     if (statusFilter === 'OFFLINE' && item.status?.is_online) return false;
     
-    // Search Query
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       const uidMatch = item.device?.device_uid?.toLowerCase().includes(q);
@@ -117,98 +102,92 @@ const Devices = () => {
 
   if (loading && devicesList.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full w-full">
-        <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-        <span className="text-text-muted text-medium">Loading IoT devices...</span>
+      <div className="flex flex-col items-center justify-center h-full w-full gap-2">
+        <div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+        <span className="text-small text-txt-muted">Loading IoT devices...</span>
       </div>
     );
   }
 
   if (error && devicesList.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full w-full gap-4">
-        <span className="text-status-error text-medium font-semibold">{error}</span>
-        <button onClick={fetchDevices} className="border border-border px-4 py-2 rounded text-text hover:bg-border/20 transition-colors">
-          Retry
-        </button>
+      <div className="flex flex-col items-center justify-center h-full w-full gap-3">
+        <span className="text-small text-error font-medium">{error}</span>
+        <Button variant="outline" size="small" onClick={fetchDevices}>Retry</Button>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      
-      {/* Header & Controls */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center shrink-0 mb-4 gap-4">
+    <div className="page-container gap-4">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center shrink-0 mb-1 gap-4">
         <div>
-          <h2 className="text-large font-display font-semibold text-text leading-tight">IoT Devices</h2>
-          <span className="text-small text-text-muted">Global overview of authorized IoT hardware</span>
+          <h1 className="text-[26px] sm:text-[28px] font-bold text-txt leading-tight tracking-tight">IoT Devices</h1>
+          <p className="text-[13px] sm:text-[14px] text-txt-muted mt-0.5 font-normal">Hardware gateway statuses and telemetry transceivers.</p>
         </div>
         
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Search Box */}
-          <div className="flex items-center border border-border bg-surface rounded px-3 py-1.5 w-48">
-            <Search className="h-4 w-4 text-text-muted mr-2 shrink-0" />
+        <div className="flex items-center gap-2.5">
+          <div className="flex items-center bg-surface border border-border rounded-lg px-3 h-[38px] w-56">
+            <Search className="h-4 w-4 text-txt-muted mr-2 shrink-0" />
             <input 
               type="text" 
-              placeholder="Search UID, Site..." 
-              className="bg-transparent text-small text-text focus:outline-none w-full"
+              placeholder="Search UID, site..." 
+              className="bg-transparent text-small text-txt focus:outline-none w-full"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
 
-          {/* Site Filter */}
-          <div className="flex items-center border border-border bg-surface rounded px-3 py-1.5">
-            <Filter className="h-4 w-4 text-text-muted mr-2" />
+          <div className="flex items-center bg-surface border border-border rounded-lg px-3 h-[38px]">
+            <Filter className="h-4 w-4 text-txt-muted mr-2" />
             <select 
-              className="bg-transparent text-small text-text font-medium focus:outline-none cursor-pointer"
+              className="bg-transparent text-small text-txt font-medium focus:outline-none cursor-pointer"
               value={selectedSiteId}
               onChange={(e) => setSelectedSiteId(e.target.value)}
             >
-              <option value="ALL" className="bg-surface">All Sites</option>
+              <option value="ALL" className="bg-surface text-txt">All Sites</option>
               {sites.map(s => (
-                <option key={s.id} value={s.id} className="bg-surface">{s.name}</option>
+                <option key={s.id} value={s.id} className="bg-surface text-txt">{s.name}</option>
               ))}
             </select>
           </div>
 
-          {/* Status Filter */}
-          <div className="flex items-center border border-border bg-surface rounded px-3 py-1.5">
-            <Filter className="h-4 w-4 text-text-muted mr-2" />
+          <div className="flex items-center bg-surface border border-border rounded-lg px-3 h-[38px]">
+            <Filter className="h-4 w-4 text-txt-muted mr-2" />
             <select 
-              className="bg-transparent text-small text-text font-medium focus:outline-none cursor-pointer"
+              className="bg-transparent text-small text-txt font-medium focus:outline-none cursor-pointer"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
-              <option value="ALL" className="bg-surface">All Statuses</option>
-              <option value="ONLINE" className="bg-surface">Online</option>
-              <option value="OFFLINE" className="bg-surface">Offline</option>
+              <option value="ALL" className="bg-surface text-txt">All Statuses</option>
+              <option value="ONLINE" className="bg-surface text-txt">Online</option>
+              <option value="OFFLINE" className="bg-surface text-txt">Offline</option>
             </select>
           </div>
         </div>
       </div>
 
       {/* Main Table */}
-      <div className="flex-1 min-h-0 overflow-auto bg-surface border border-border rounded shadow-sm">
+      <div className="card p-0 flex-1 overflow-auto">
         {filteredData.length === 0 ? (
-          <div className="p-8 text-center text-text-muted">
-            {loading ? 'Refreshing devices...' : 'No IoT devices available.'}
+          <div className="p-8 text-center text-txt-muted text-caption">
+            {loading ? 'Refreshing devices...' : 'No matching IoT devices found.'}
           </div>
         ) : (
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-border/30 text-text-muted text-[11px] uppercase tracking-wider sticky top-0 z-10 shadow-sm">
-                <th className="py-3 px-4 font-medium border-b border-border">Device</th>
-                <th className="py-3 px-4 font-medium border-b border-border">Site</th>
-                <th className="py-3 px-4 font-medium border-b border-border">Panel</th>
-                <th className="py-3 px-4 font-medium border-b border-border text-center">Type</th>
-                <th className="py-3 px-4 font-medium border-b border-border text-center">Firmware</th>
-                <th className="py-3 px-4 font-medium border-b border-border text-center">Status</th>
-                <th className="py-3 px-4 font-medium border-b border-border text-right">Last Seen</th>
+          <table className="w-full text-left whitespace-nowrap">
+            <thead className="table-header sticky top-0 z-10">
+              <tr>
+                <th className="py-2 px-3">Device UID</th>
+                <th className="py-2 px-3">Site</th>
+                <th className="py-2 px-3">Panel</th>
+                <th className="py-2 px-3 text-center">Type</th>
+                <th className="py-2 px-3 text-center">Firmware</th>
+                <th className="py-2 px-3 text-center">Status</th>
+                <th className="py-2 px-3 text-right">Last Seen</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-border">
               {filteredData.map((item, i) => {
                 const hasDevice = !!item.device;
                 
@@ -218,28 +197,28 @@ const Devices = () => {
                     onClick={() => {
                       if (hasDevice) navigate(`/devices/${item.device.device_uid}?panelId=${item.panel.id}`);
                     }}
-                    className={`border-b border-border/50 transition-colors ${hasDevice ? 'hover:bg-border/20 cursor-pointer' : ''} ${i % 2 === 0 ? '' : 'bg-border/5'}`}
+                    className={`table-row text-caption ${hasDevice ? 'cursor-pointer' : ''}`}
                   >
-                    <td className="py-3 px-4 text-text font-semibold text-small font-mono">
-                      {hasDevice ? item.device.device_uid : <span className="text-text-muted">N/A</span>}
+                    <td className="table-cell font-mono font-medium text-txt">
+                      {hasDevice ? item.device.device_uid : <span className="text-txt-muted">—</span>}
                     </td>
-                    <td className="py-3 px-4 text-text-muted text-small">{item.site.name}</td>
-                    <td className="py-3 px-4 text-text-muted text-small font-semibold">P{item.panel.id.toString().padStart(2, '0')}</td>
-                    <td className="py-3 px-4 text-center">
-                      <span className="text-[11px] font-mono text-text-muted bg-border/30 px-2 py-0.5 rounded">
+                    <td className="table-cell-muted">{item.site.name}</td>
+                    <td className="table-cell font-medium text-txt">P{item.panel.id.toString().padStart(2, '0')}</td>
+                    <td className="table-cell text-center">
+                      <span className="text-[10px] font-mono text-txt-secondary bg-surface-secondary border border-border px-1.5 py-0.5 rounded">
                         {hasDevice ? item.device.device_type : 'N/A'}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-center text-small font-mono text-text-muted">
-                      {hasDevice ? `v${item.device.firmware_version}` : 'N/A'}
+                    <td className="table-cell-muted text-center font-mono text-[11px]">
+                      {hasDevice ? `v${item.device.firmware_version}` : '—'}
                     </td>
-                    <td className="py-3 px-4 text-center">
+                    <td className="table-cell text-center">
                       {hasDevice ? (
-                         <StatusBadge status={item.status?.is_online ? 'ONLINE' : 'OFFLINE'} />
-                      ) : <span className="text-text-muted text-small">N/A</span>}
+                        <StatusBadge status={item.status?.is_online ? 'ONLINE' : 'OFFLINE'} />
+                      ) : <span className="text-txt-muted">—</span>}
                     </td>
-                    <td className="py-3 px-4 text-text-muted text-small text-right">
-                      {hasDevice ? formatLastSeen(item.status?.last_seen) : 'N/A'}
+                    <td className="table-cell-muted font-mono text-right text-[11px]">
+                      {hasDevice ? formatLastSeen(item.status?.last_seen) : '—'}
                     </td>
                   </tr>
                 );
@@ -248,7 +227,6 @@ const Devices = () => {
           </table>
         )}
       </div>
-
     </div>
   );
 };

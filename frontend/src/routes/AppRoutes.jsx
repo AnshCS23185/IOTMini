@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AppLayout } from '../layouts/AppLayout';
 import { Login } from '../pages/Login';
+import { SetPassword } from '../pages/SetPassword';
 import { useAuth } from '../context/AuthContext';
 import Dashboard from '../pages/Dashboard/Dashboard';
 import Sites from '../pages/Sites/Sites';
@@ -38,6 +39,7 @@ export const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/set-password" element={<SetPassword />} />
       
       <Route path="/" element={<AppLayout />}>
         <Route index element={<Navigate to="/dashboard" replace />} />

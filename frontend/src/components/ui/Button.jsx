@@ -10,19 +10,19 @@ export const Button = React.forwardRef(({
   ...props
 }, ref) => {
   const variants = {
-    primary: 'bg-primary text-primary-text hover:opacity-90 shadow-sm border border-transparent',
-    secondary: 'bg-secondary text-secondary-text hover:opacity-90 shadow-sm border border-transparent',
-    accent: 'bg-accent text-deep-brown font-medium hover:opacity-90 shadow-sm border border-transparent',
-    outline: 'bg-surface border border-border text-text hover:bg-border/50',
-    ghost: 'hover:bg-border/50 text-text',
-    danger: 'bg-status-error text-white hover:opacity-90 shadow-sm border border-transparent',
+    primary: 'bg-[#B86F50] text-white hover:bg-[#C67C5C] border border-[#B86F50] font-medium shadow-none',
+    secondary: 'bg-secondary text-white hover:brightness-110 border border-secondary font-medium',
+    accent: 'bg-accent text-white font-medium hover:brightness-105 border border-accent',
+    outline: 'bg-transparent border border-border text-txt hover:bg-surface-hover font-medium',
+    ghost: 'bg-transparent text-txt hover:bg-surface-hover font-medium',
+    danger: 'bg-error text-white hover:brightness-110 border border-error font-medium',
   };
 
   const sizes = {
-    small: 'px-2 py-1 text-small',
-    medium: 'px-3 py-1.5 text-medium',
-    large: 'px-4 py-2 text-large',
-    icon: 'p-1.5',
+    small: 'h-[32px] px-3 text-small rounded-lg gap-1.5',
+    medium: 'h-[38px] px-3.5 text-body-sm rounded-lg font-medium gap-1.5',
+    large: 'h-[42px] px-5 text-body rounded-lg font-medium gap-2',
+    icon: 'h-[36px] w-[36px] rounded-lg',
   };
 
   return (
@@ -30,7 +30,7 @@ export const Button = React.forwardRef(({
       ref={ref}
       type={type}
       className={cn(
-        'inline-flex items-center justify-center rounded transition-all focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 dark:focus:ring-offset-background disabled:opacity-50 disabled:pointer-events-none',
+        'inline-flex items-center justify-center transition-colors focus:outline-none disabled:opacity-40 disabled:pointer-events-none cursor-pointer whitespace-nowrap',
         variants[variant],
         sizes[size],
         className

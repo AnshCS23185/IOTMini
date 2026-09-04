@@ -8,38 +8,57 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: 'var(--background)',
-        surface: 'var(--surface)',
-        text: 'var(--text)',
-        'text-muted': 'var(--text-muted)',
-        border: 'var(--border)',
-        
-        // PanelIQ Final Palette
-        'deep-brown': '#3B2823',
-        'solar-orange': '#D59D80',
-        peach: '#F1C6B3',
-        lavender: '#C6C0D0',
-        'deep-teal': '#104C64',
-        'sage-teal': '#6C8F8A',
-
-        // Status Colors
-        status: {
-          healthy: '#6C8F8A', // Using Sage Teal
-          attention: '#D59D80', // Using Solar Orange
-          underperforming: '#F1C6B3', // Using Peach
-          offline: '#3B2823', // Using Deep Brown
-          error: '#ef4444', 
-        }
+        background: 'var(--bg)',
+        surface: 'var(--sf)',
+        'surface-secondary': 'var(--sf-2)',
+        'surface-elevated': 'var(--sf-el)',
+        'surface-hover': 'var(--sf-hv)',
+        border: 'var(--bd)',
+        'border-strong': 'var(--bd-s)',
+        txt: 'var(--tx)',
+        'txt-secondary': 'var(--tx-2)',
+        'txt-muted': 'var(--tx-m)',
+        primary: 'var(--pr)',
+        'primary-text': 'var(--pr-tx)',
+        secondary: 'var(--sc)',
+        'secondary-text': 'var(--sc-tx)',
+        accent: 'var(--ac)',
+        'brand-brown': '#3B2823',
+        'brand-orange': '#D59D80',
+        'brand-peach': '#F1C6B3',
+        'brand-lavender': '#C6C0D0',
+        'brand-teal': '#104C64',
+        'brand-sage': '#6C8F8A',
+        success: 'var(--st-ok)',
+        warning: 'var(--st-warn)',
+        error: 'var(--st-err)',
+        info: 'var(--st-info)',
+        neutral: 'var(--st-neut)',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Nohemi', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
       },
       fontSize: {
-        small: ['0.875rem', { lineHeight: '1.25rem' }],
-        medium: ['1rem', { lineHeight: '1.5rem' }],
-        large: ['1.5rem', { lineHeight: '2rem' }],
-      }
+        'page-title': ['26px', { lineHeight: '1.2', fontWeight: '600' }],
+        'section': ['18px', { lineHeight: '1.3', fontWeight: '600' }],
+        'subsection': ['15px', { lineHeight: '1.4', fontWeight: '600' }],
+        'body': ['13px', { lineHeight: '1.5' }],
+        'body-sm': ['13px', { lineHeight: '1.4' }],
+        'small': ['12px', { lineHeight: '1.35' }],
+        'caption': ['11px', { lineHeight: '1.3', fontWeight: '500' }],
+        'stat': ['26px', { lineHeight: '1', fontWeight: '700' }],
+        'stat-sm': ['20px', { lineHeight: '1', fontWeight: '600' }],
+      },
+      borderRadius: {
+        'sm': '6px',
+        'md': '7px',
+        'lg': '8px',
+        'xl': '10px',
+      },
+      boxShadow: {
+        'card': '0 1px 2px rgba(0,0,0,0.04)',
+        'dropdown': '0 4px 16px rgba(0,0,0,0.16)',
+      },
     },
   },
   plugins: [],

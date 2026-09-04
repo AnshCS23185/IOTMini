@@ -21,7 +21,19 @@ class Settings(BaseSettings):
     THERMAL_TEMP_THRESHOLD: float = 40.0
     FAULT_CONFIRMATION_COUNT: int = 3
     
+    # SMTP Config
+    SMTP_HOST: str | None = None
+    SMTP_PORT: int | None = 587
+    SMTP_USER: str | None = None
+    SMTP_USERNAME: str | None = None
+    SMTP_PASSWORD: str | None = None
+    SMTP_TLS: bool = True
+    EMAILS_FROM_EMAIL: str | None = None
+    EMAILS_FROM_NAME: str | None = "PanelIQ"
+    FROM_EMAIL: str | None = None
+    
     class Config:
         env_file = ".env"
+        extra = "ignore"
 
 settings = Settings()

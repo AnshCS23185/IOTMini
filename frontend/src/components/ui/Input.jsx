@@ -11,7 +11,7 @@ export const Input = React.forwardRef(({
   return (
     <div className="flex flex-col gap-1 w-full">
       {label && (
-        <label className="text-small font-medium text-text">
+        <label className="text-caption uppercase tracking-wider font-semibold text-txt-muted">
           {label}
         </label>
       )}
@@ -19,16 +19,14 @@ export const Input = React.forwardRef(({
         ref={ref}
         type={type}
         className={cn(
-          'flex h-8 w-full rounded border border-border bg-surface px-3 py-1 text-medium text-text placeholder:text-text-muted transition-colors focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary disabled:cursor-not-allowed disabled:opacity-50',
-          error && 'border-status-error focus:ring-status-error focus:border-status-error',
+          'input-base',
+          error && 'border-error focus:ring-error/15 focus:border-error',
           className
         )}
         {...props}
       />
       {error && (
-        <span className="text-small text-status-error">
-          {error}
-        </span>
+        <span className="text-caption text-error">{error}</span>
       )}
     </div>
   );

@@ -6,7 +6,7 @@ from typing import List, Optional
 
 from app.database import get_db
 from app.core.dependencies import get_current_active_user
-from app.core.permissions import check_panel_access, check_site_access
+from app.core.permissions import check_panel_access, check_site_access, require_permission
 from app.models.user import User
 from app.models.site import Site
 from app.models.panel import Panel
@@ -22,11 +22,11 @@ from app.services.performance_service import PerformanceService
 router = APIRouter(tags=["Performance"])
 
 @router.get("/panels/{panel_id}/expected-power", response_model=ExpectedPowerResponse)
-async def get_expected_power(panel_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+async def get_expected_power(panel_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_permission("REPORT_VIEW"))):
     panel = db.query(Panel).filter(Panel.id == panel_id).first()
     if not panel:
         raise HTTPException(status_code=404, detail="Panel not found")
-    check_panel_access(current_user, panel)
+    check_panel_access(current_user, panel, db)
     
     # Check for recent cached expected power
     # PVGIS DRcalc profile is hourly, so cache for 30 minutes to stay fresh
@@ -57,11 +57,11 @@ async def get_expected_power(panel_id: int, db: Session = Depends(get_db), curre
     return new_expected
 
 @router.get("/panels/{panel_id}/performance", response_model=PanelPerformanceResponse)
-async def get_panel_performance(panel_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+async def get_panel_performance(panel_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_permission("REPORT_VIEW"))):
     panel = db.query(Panel).filter(Panel.id == panel_id).first()
     if not panel:
         raise HTTPException(status_code=404, detail="Panel not found")
-    check_panel_access(current_user, panel)
+    check_panel_access(current_user, panel, db)
     
     # 1. Get Actual Power (Latest Reading)
     latest_reading = db.query(SensorReading).filter(SensorReading.panel_id == panel_id).order_by(desc(SensorReading.timestamp)).first()
@@ -88,11 +88,11 @@ async def get_panel_performance(panel_id: int, db: Session = Depends(get_db), cu
     return perf
 
 @router.get("/sites/{site_id}/performance")
-async def get_site_performance(site_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+async def get_site_performance(site_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_permission("REPORT_VIEW"))):
     site = db.query(Site).filter(Site.id == site_id).first()
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
-    check_site_access(current_user, site)
+    check_site_access(current_user, site, db)
     
     panels = db.query(Panel).filter(Panel.site_id == site_id).all()
     
@@ -127,12 +127,12 @@ def get_performance_history(
     end_time: Optional[datetime] = Query(None, alias="to"),
     limit: int = Query(100, le=1000),
     db: Session = Depends(get_db), 
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(require_permission("REPORT_VIEW"))
 ):
     panel = db.query(Panel).filter(Panel.id == panel_id).first()
     if not panel:
         raise HTTPException(status_code=404, detail="Panel not found")
-    check_panel_access(current_user, panel)
+    check_panel_access(current_user, panel, db)
     
     query = db.query(PanelPerformance).filter(PanelPerformance.panel_id == panel_id)
     if start_time:
@@ -143,11 +143,11 @@ def get_performance_history(
     return query.order_by(desc(PanelPerformance.timestamp)).limit(limit).all()
 
 @router.get("/sites/{site_id}/dashboard", response_model=DashboardResponse)
-async def get_dashboard(site_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+async def get_dashboard(site_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_permission("DASHBOARD_VIEW"))):
     site = db.query(Site).filter(Site.id == site_id).first()
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
-    check_site_access(current_user, site)
+    check_site_access(current_user, site, db)
     
     panels = db.query(Panel).filter(Panel.site_id == site_id).all()
     

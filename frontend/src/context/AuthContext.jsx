@@ -43,13 +43,24 @@ export const AuthProvider = ({ children }) => {
       const response = await apiLogin(email, password);
       if (response.access_token) {
         localStorage.setItem('token', response.access_token);
+        
+        // If password change is required, don't load full user yet, let the UI redirect
+        if (response.requires_password_change) {
+          return { success: true, requires_password_change: true };
+        }
+        
         await loadUser();
-        return true;
+        return { success: true, requires_password_change: false };
       }
-      return false;
+      return { success: false };
     } catch (err) {
-      setError(err.message || 'Login failed');
-      return false;
+      console.error('Login error:', err);
+      if (err.response?.status === 401) {
+        setError('Incorrect email or password.');
+      } else {
+        setError('An unexpected error occurred.');
+      }
+      return { success: false };
     }
   };
 

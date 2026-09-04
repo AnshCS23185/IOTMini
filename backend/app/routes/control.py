@@ -7,7 +7,7 @@ import os
 
 from app.database import get_db
 from app.core.dependencies import get_current_active_user
-from app.core.permissions import check_panel_access, check_site_access
+from app.core.permissions import check_panel_access, check_site_access, require_permission
 from app.models.user import User
 from app.models.panel import Panel
 from app.models.iot_device import IoTDevice
@@ -20,13 +20,13 @@ router = APIRouter(tags=["Hardware Control"])
 OFFLINE_TIMEOUT_MINUTES = int(os.getenv("OFFLINE_TIMEOUT_MINUTES", "5"))
 
 @router.get("/iot/devices/{device_uid}/status", response_model=DeviceStatusResponse)
-def get_device_status(device_uid: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+def get_device_status(device_uid: str, db: Session = Depends(get_db), current_user: User = Depends(require_permission("PANEL_VIEW"))):
     device = db.query(IoTDevice).filter(IoTDevice.device_uid == device_uid).first()
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
         
     # Security: Ensure user has access to the site this device belongs to
-    check_site_access(current_user, device.site)
+    check_site_access(current_user, device.site, db)
     
     is_online = False
     if device.last_seen:
@@ -47,14 +47,14 @@ def poll_device_commands(
     device_uid: str,
     status: Optional[str] = Query("PENDING", description="Filter by status (e.g. PENDING)"),
     db: Session = Depends(get_db), 
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(require_permission("PANEL_VIEW"))
 ):
     device = db.query(IoTDevice).filter(IoTDevice.device_uid == device_uid).first()
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
         
     # Security: Ensure user has access to the site this device belongs to
-    check_site_access(current_user, device.site)
+    check_site_access(current_user, device.site, db)
     
     query = db.query(DeviceCommand).filter(DeviceCommand.device_id == device.id)
     if status:
@@ -63,12 +63,12 @@ def poll_device_commands(
     return query.order_by(DeviceCommand.requested_at.asc()).all()
 
 @router.get("/panels/{panel_id}/control", response_model=List[DeviceCommandResponse])
-def get_panel_commands(panel_id: int, limit: int = 50, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+def get_panel_commands(panel_id: int, limit: int = 50, db: Session = Depends(get_db), current_user: User = Depends(require_permission("PANEL_VIEW"))):
     panel = db.query(Panel).filter(Panel.id == panel_id).first()
     if not panel:
         raise HTTPException(status_code=404, detail="Panel not found")
     
-    check_panel_access(current_user, panel)
+    check_panel_access(current_user, panel, db)
     
     commands = db.query(DeviceCommand).filter(
         DeviceCommand.panel_id == panel.id
@@ -77,12 +77,12 @@ def get_panel_commands(panel_id: int, limit: int = 50, db: Session = Depends(get
     return commands
 
 @router.post("/panels/{panel_id}/control", response_model=DeviceCommandResponse)
-def send_panel_command(panel_id: int, command_in: DeviceCommandCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+def send_panel_command(panel_id: int, command_in: DeviceCommandCreate, db: Session = Depends(get_db), current_user: User = Depends(require_permission("PANEL_CONTROL"))):
     panel = db.query(Panel).filter(Panel.id == panel_id).first()
     if not panel:
         raise HTTPException(status_code=404, detail="Panel not found")
         
-    check_panel_access(current_user, panel)
+    check_panel_access(current_user, panel, db)
     
     if command_in.command not in ["RELAY_ON", "RELAY_OFF"]:
         raise HTTPException(status_code=400, detail="Invalid command. Supported commands are RELAY_ON, RELAY_OFF.")

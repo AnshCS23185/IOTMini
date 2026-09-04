@@ -1,127 +1,171 @@
 @import "tailwindcss";
 
 @theme {
-  /* Core PanelIQ Palette */
-  --color-paneliq-brown: #3B2823;
-  --color-paneliq-orange: #D59D80;
-  --color-paneliq-peach: #F1C6B3;
-  --color-paneliq-lavender: #C6C0D0;
-  --color-paneliq-teal: #104C64;
-  --color-paneliq-sage: #6C8F8A;
-
-  /* Semantic Theme Variables */
-  --color-background: var(--background);
-  --color-surface: var(--surface);
-  --color-text: var(--text);
-  --color-text-muted: var(--text-muted);
-  --color-border: var(--border);
-  
-  --color-primary: var(--primary);
-  --color-primary-text: var(--primary-text);
-  --color-secondary: var(--secondary);
-  --color-secondary-text: var(--secondary-text);
-  --color-accent: var(--accent);
-  
-  /* Status Variables */
-  --color-status-healthy: var(--status-healthy);
-  --color-status-attention: var(--status-attention);
-  --color-status-warning: var(--status-warning);
-  --color-status-error: var(--status-error);
-  --color-status-neutral: var(--status-neutral);
-  --color-status-info: var(--status-info);
-
-  /* Typography */
-  --font-sans: 'Inter', system-ui, sans-serif;
-  --font-display: 'Nohemi', 'Inter', system-ui, sans-serif;
+  --color-background: var(--bg);
+  --color-surface: var(--sf);
+  --color-surface-secondary: var(--sf-2);
+  --color-surface-elevated: var(--sf-el);
+  --color-surface-hover: var(--sf-hv);
+  --color-border: var(--bd);
+  --color-border-strong: var(--bd-s);
+  --color-txt: var(--tx);
+  --color-txt-secondary: var(--tx-2);
+  --color-txt-muted: var(--tx-m);
+  --color-primary: var(--pr);
+  --color-primary-hover: var(--pr-hv);
+  --color-primary-text: var(--pr-tx);
+  --color-secondary: var(--sc);
+  --color-secondary-text: var(--sc-tx);
+  --color-accent: var(--ac);
+  --color-success: var(--st-ok);
+  --color-warning: var(--st-warn);
+  --color-error: var(--st-err);
+  --color-info: var(--st-info);
+  --color-neutral: var(--st-neut);
+  --color-brand-brown: #3B2823;
+  --color-brand-orange: #D59D80;
+  --color-brand-peach: #F1C6B3;
+  --color-brand-lavender: #C6C0D0;
+  --color-brand-teal: #104C64;
+  --color-brand-sage: #6C8F8A;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 @layer base {
   :root {
-    /* LIGHT MODE */
-    --background: #FFFFFF;
-    --surface: #F8F7FA; /* Very light lavender tint instead of generic gray */
-    --text: #1a1a1a;
-    --text-muted: #6B6875; /* Lavender-tinted dark gray */
-    --border: #E8E6EC; /* Lavender-tinted light gray */
-    
-    --primary: #D59D80; /* Solar Orange */
-    --primary-text: #3B2823; /* Deep Brown */
-    
-    --secondary: #104C64; /* Deep Teal */
-    --secondary-text: #FFFFFF;
-    
-    --accent: #F1C6B3; /* Peach */
-    
-    --status-healthy: #6C8F8A; /* Sage Teal */
-    --status-attention: #D59D80; /* Solar Orange */
-    --status-warning: #3B2823; /* Deep Brown used for underperforming/error/offline */
-    --status-error: #3B2823; /* Deep Brown */
-    --status-neutral: #C6C0D0; /* Lavender */
-    --status-info: #104C64; /* Deep Teal */
-    
+    --bg: #FAFAFA;
+    --sf: #FFFFFF;
+    --sf-2: #F4F4F5;
+    --sf-el: #FFFFFF;
+    --sf-hv: #F4F4F5;
+    --bd: #E4E4E7;
+    --bd-s: #D4D4D8;
+    --tx: #000000;
+    --tx-2: #18181B;
+    --tx-m: #27272A;
+    --pr: #B86F50;
+    --pr-hv: #A35E42;
+    --pr-tx: #FFFFFF;
+    --sc: #104C64;
+    --sc-tx: #FFFFFF;
+    --ac: #D59D80;
+    --st-ok: #16A34A;
+    --st-warn: #D97706;
+    --st-err: #DC2626;
+    --st-info: #104C64;
+    --st-neut: #18181B;
     color-scheme: light;
   }
 
   .dark {
-    /* DARK MODE */
-    --background: #000000; /* PURE BLACK */
-    --surface: #0C0C0C; /* Subtle black/dark elevation */
-    --text: #F9F9F9;
-    --text-muted: #A39EAC; /* Lavender-tinted muted text */
-    --border: #1F1F1F;
-    
-    --primary: #D59D80; /* Solar Orange */
-    --primary-text: #000000;
-    
-    --secondary: #104C64; /* Deep Teal */
-    --secondary-text: #FFFFFF;
-    
-    --accent: #F1C6B3; /* Peach */
-    
-    --status-healthy: #6C8F8A;
-    --status-attention: #D59D80;
-    --status-warning: #D59D80; /* Brighten deep brown to orange in dark mode if needed, or keep Deep Teal for contrast? Let's use #F1C6B3 (Peach) for warning visibility on black */
-    --status-error: #D59D80; /* Error states should pop. #3B2823 is too dark for black background. Using Solar Orange. */
-    --status-neutral: #C6C0D0;
-    --status-info: #104C64;
-    
+    --bg: #000000;
+    --sf: #000000;
+    --sf-2: #050505;
+    --sf-el: #0A0A0A;
+    --sf-hv: rgba(255, 255, 255, 0.04);
+    --bd: rgba(255, 255, 255, 0.10);
+    --bd-s: rgba(255, 255, 255, 0.16);
+    --tx: #FFFFFF;
+    --tx-2: #FFFFFF;
+    --tx-m: #D4D4D4;
+    --pr: #B86F50;
+    --pr-hv: #C67C5C;
+    --pr-tx: #FFFFFF;
+    --sc: #6C8F8A;
+    --sc-tx: #FFFFFF;
+    --ac: #D59D80;
+    --st-ok: #4ADE80;
+    --st-warn: #FBBF24;
+    --st-err: #F87171;
+    --st-info: #6C8F8A;
+    --st-neut: #FFFFFF;
     color-scheme: dark;
   }
 
-  body {
-    background-color: var(--background);
-    color: var(--text);
-    margin: 0;
-    padding: 0;
+  html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    background-color: var(--bg);
+    color: var(--tx);
   }
 
-  /* Force only three font sizes globally */
-  h1, h2, h3 {
-    font-family: 'Nohemi', 'Inter', system-ui, sans-serif;
-    font-size: 1.5rem;
-    line-height: 2rem;
-    font-weight: 600;
-    letter-spacing: -0.025em;
-  }
-  
-  p, span, div, input, button, label {
-    font-size: 1rem;
-    line-height: 1.5rem;
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg);
+    color: var(--tx);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
   }
 
-  small, .text-small {
-    font-size: 0.875rem;
-    line-height: 1.25rem;
-  }
+  h1 { font-size: 26px; font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; color: var(--tx); }
+  h2 { font-size: 20px; font-weight: 600; line-height: 1.3; color: var(--tx); }
+  h3 { font-size: 16px; font-weight: 600; line-height: 1.4; color: var(--tx); }
+  p, span, div, label { font-size: 13px; line-height: 1.5; color: inherit; }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 3px; }
+  ::selection { background: #B86F50; color: #FFFFFF; }
 }
 
 @layer utilities {
-  .compact-padding {
-    padding: 0.5rem;
+  .text-page-title { font-size: 26px; font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; color: var(--tx); }
+  .text-section { font-size: 18px; font-weight: 600; line-height: 1.3; color: var(--tx); }
+  .text-subsection { font-size: 15px; font-weight: 600; line-height: 1.4; color: var(--tx); }
+  .text-body { font-size: 13px; line-height: 1.5; color: var(--tx); }
+  .text-body-sm { font-size: 13px; line-height: 1.4; }
+  .text-small { font-size: 12px; line-height: 1.35; }
+  .text-caption { font-size: 11px; line-height: 1.3; font-weight: 500; }
+  .text-stat { font-size: 26px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; color: var(--tx); }
+  .text-stat-sm { font-size: 22px; font-weight: 700; line-height: 1; color: var(--tx); }
+
+  .card {
+    background: var(--sf);
+    border: 1px solid var(--bd);
+    border-radius: 8px;
+    padding: 14px;
   }
-  .compact-margin {
-    margin: 0.5rem;
+  .card-hover { transition: border-color 0.15s ease; }
+  .card-hover:hover { border-color: var(--bd-s); }
+
+  .table-header {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--tx-m);
+    background: var(--sf);
+    border-bottom: 1px solid var(--bd);
   }
+  .table-row {
+    border-bottom: 1px solid var(--bd);
+    background: transparent;
+    transition: background-color 0.1s ease;
+  }
+  .table-row:hover { background: var(--sf-hv); }
+  .table-cell { padding: 12px 14px; font-size: 13px; color: var(--tx); }
+  .table-cell-muted { padding: 12px 14px; font-size: 13px; color: var(--tx-m); }
+
+  .input-base {
+    height: 38px;
+    padding: 0 12px;
+    font-size: 13px;
+    background: var(--sf);
+    border: 1px solid var(--bd);
+    border-radius: 8px;
+    color: var(--tx);
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+  .input-base::placeholder { color: var(--tx-m); }
+  .input-base:focus { border-color: #B86F50; }
+
+  .page-container { display: flex; flex-direction: column; height: 100%; animation: fadeIn 0.15s ease-out; }
+  .page-header { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 16px; border-bottom: 1px solid var(--bd); margin-bottom: 16px; }
+
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .animate-in { animation: fadeIn 0.15s ease-out; }
 }

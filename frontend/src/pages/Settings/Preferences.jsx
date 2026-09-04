@@ -24,13 +24,13 @@ const Preferences = () => {
   return (
     <div className="flex flex-col gap-6 max-w-2xl">
       <div className="border-b border-border/50 pb-2">
-        <h3 className="text-medium font-semibold text-text">Application Preferences</h3>
-        <p className="text-small text-text-muted">Customize your PanelIQ experience</p>
+        <h3 className="text-body font-semibold text-txt">Application Preferences</h3>
+        <p className="text-small text-txt-muted">Customize your PanelIQ experience</p>
       </div>
 
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
-          <label className="text-[11px] uppercase tracking-wider font-semibold text-text-muted">
+          <label className="text-caption uppercase tracking-wider font-semibold text-txt-muted">
             User Interface Theme
           </label>
           
@@ -40,7 +40,7 @@ const Preferences = () => {
               className={`flex-1 flex flex-col items-center justify-center p-4 border rounded transition-colors ${
                 theme === 'light' 
                   ? 'border-primary bg-primary/5 text-primary' 
-                  : 'border-border bg-surface text-text-muted hover:border-primary/50 hover:text-text'
+                  : 'border-border bg-surface text-txt-muted hover:border-primary/50 hover:text-txt'
               }`}
             >
               <Sun className="h-6 w-6 mb-2" />
@@ -52,12 +52,12 @@ const Preferences = () => {
               className={`flex-1 flex flex-col items-center justify-center p-4 border rounded transition-colors ${
                 theme === 'dark' 
                   ? 'border-primary bg-primary/5 text-primary' 
-                  : 'border-border bg-surface text-text-muted hover:border-primary/50 hover:text-text'
+                  : 'border-border bg-surface text-txt-muted hover:border-primary/50 hover:text-txt'
               }`}
             >
               <Moon className="h-6 w-6 mb-2" />
               <span className="text-small font-semibold">Dark Mode</span>
-              <span className="text-[10px] mt-1 opacity-70">(Pure Black)</span>
+              <span className="text-caption mt-1 opacity-70">(Pure Black)</span>
             </button>
           </div>
         </div>
