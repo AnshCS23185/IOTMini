@@ -19,7 +19,14 @@ export const getOrganizations = async () => {
   return apiClient('/organizations');
 };
 export const createOrganization = async (data) => {
-  return apiClient('/organizations', { method: 'POST', body: data }); // Let apiClient stringify if not FormData
+  return apiClient('/organizations', { method: 'POST', body: data });
+};
+export const updateOrganization = async (orgId, data) => {
+  return apiClient(`/organizations/${orgId}`, { method: 'PUT', body: data });
+};
+
+export const resendInvitation = async (userId) => {
+  return apiClient(`/users/${userId}/resend-invitation`, { method: 'POST' });
 };
 
 // Sites

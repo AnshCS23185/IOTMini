@@ -10,8 +10,10 @@ class OrganizationBase(BaseModel):
 class OrganizationCreate(OrganizationBase):
     pass
 
-class OrganizationUpdate(OrganizationBase):
+class OrganizationUpdate(BaseModel):
     name: Optional[str] = None
+    contact_information: Optional[str] = None
+    status: Optional[str] = None
 
 class OrganizationResponse(OrganizationBase):
     id: int

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from .organization import OrganizationResponse
 
@@ -12,6 +12,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: Optional[str] = None
+    site_id: Optional[int] = None
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
@@ -20,14 +21,17 @@ class UserUpdate(BaseModel):
     organization_id: Optional[int] = None
     status: Optional[str] = None
     password: Optional[str] = None
+    site_id: Optional[int] = None
 
 class UserResponse(UserBase):
     id: int
     created_at: datetime
-    updated_at: Optional[datetime]
+    updated_at: Optional[datetime] = None
     
     class Config:
         from_attributes = True
 
 class UserWithOrganizationResponse(UserResponse):
     organization: Optional[OrganizationResponse] = None
+    site_ids: Optional[List[int]] = None
+

@@ -108,8 +108,9 @@ async def get_site_performance(site_id: int, db: Session = Depends(get_db), curr
         expected_res = await get_expected_power(p.id, db, current_user)
         expected = expected_res.expected_power_w
         
-        if actual is not None and expected > 0:
+        if actual is not None:
             total_actual += actual
+        if expected is not None and expected > 0:
             total_expected += expected
         
     site_perf = PerformanceService.calculate_site_performance(total_actual, total_expected)
@@ -175,8 +176,9 @@ async def get_dashboard(site_id: int, db: Session = Depends(get_db), current_use
             status = "NO_DATA"
             pct = None
             
-        if actual is not None and expected > 0:
+        if actual is not None:
             total_actual += actual
+        if expected is not None and expected > 0:
             total_expected += expected
         
         if status == "HEALTHY":
