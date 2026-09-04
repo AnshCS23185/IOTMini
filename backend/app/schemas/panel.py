@@ -29,6 +29,16 @@ class PanelResponse(PanelBase):
     id: int
     created_at: datetime
     updated_at: Optional[datetime]
+    site_name: Optional[str] = None
 
     class Config:
         from_attributes = True
+
+class PanelStatusUpdate(BaseModel):
+    status: str  # "ACTIVE" or "INACTIVE"
+
+class PanelSummaryResponse(BaseModel):
+    total_panels: int = 0
+    active_panels: int = 0
+    inactive_panels: int = 0
+    total_rated_power_w: float = 0.0

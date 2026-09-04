@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { createPanel, updatePanel, deletePanel } from '../../../api/admin';
-import { getSitePanels } from '../../../api/panels'; // Reuse existing logic
+import { createPanel, updatePanel, deletePanel, getSitePanels } from '../../../api/panels';
 import { getSites } from '../../../api/sites';
 import { Loader2, Grid, Plus, Edit2, Trash2, Shield } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
