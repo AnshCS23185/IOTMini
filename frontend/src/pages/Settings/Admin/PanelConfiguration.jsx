@@ -159,29 +159,29 @@ const PanelConfiguration = () => {
     <div className="flex flex-col gap-6">
       <div className="flex justify-between items-end border-b border-border/50 pb-2">
         <div>
-          <h3 className="text-medium font-semibold text-text">Panel Configuration</h3>
-          <p className="text-small text-text-muted">Manage PV panel physical properties for performance engine</p>
+          <h3 className="text-body font-semibold text-txt">Panel Configuration</h3>
+          <p className="text-small text-txt-muted">Manage PV panel physical properties for performance engine</p>
         </div>
         {!isEditing && (
-          <Button variant="primary" onClick={() => handleOpenEdit(null)} className="h-8 text-[11px]">
+          <Button variant="primary" onClick={() => handleOpenEdit(null)} className="h-8 text-caption">
             <Plus className="h-3 w-3 mr-1" /> Add Panel
           </Button>
         )}
       </div>
 
-      {error && <div className="text-status-error text-small bg-status-error/10 p-3 rounded">{error}</div>}
+      {error && <div className="text-error text-small bg-error/10 p-3 rounded">{error}</div>}
 
       {isEditing ? (
         <div className="bg-surface border border-border p-6 rounded shadow-sm max-w-2xl">
           <div className="flex items-center gap-2 mb-4 border-b border-border/50 pb-2">
             <Grid className="h-4 w-4 text-primary" />
-            <span className="font-semibold text-text">{editingPanel ? 'Edit Panel Configuration' : 'Register New Panel'}</span>
+            <span className="font-semibold text-txt">{editingPanel ? 'Edit Panel Configuration' : 'Register New Panel'}</span>
           </div>
           
-          <div className="mb-4 bg-status-warning/10 border border-status-warning/30 p-3 rounded flex gap-2">
-            <Shield className="h-4 w-4 text-status-warning shrink-0" />
-            <span className="text-[11px] text-text-muted">
-              Modifying physical properties (<strong className="text-status-warning">Tilt, Azimuth, System Losses</strong>) instantly changes expected output boundaries calculated by PVGIS.
+          <div className="mb-4 bg-warning/10 border border-status-warning/30 p-3 rounded flex gap-2">
+            <Shield className="h-4 w-4 text-warning shrink-0" />
+            <span className="text-caption text-txt-muted">
+              Modifying physical properties (<strong className="text-warning">Tilt, Azimuth, System Losses</strong>) instantly changes expected output boundaries calculated by PVGIS.
             </span>
           </div>
 
@@ -189,12 +189,12 @@ const PanelConfiguration = () => {
             
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] uppercase tracking-wider font-semibold text-text-muted">Panel Name</label>
-                <input required type="text" placeholder="e.g. P01" className="bg-background border border-border rounded px-3 py-2 text-small text-text focus:outline-none focus:border-primary" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                <label className="text-caption uppercase tracking-wider font-semibold text-txt-muted">Panel Name</label>
+                <input required type="text" placeholder="e.g. P01" className="bg-background border border-border rounded px-3 py-2 text-small text-txt focus:outline-none focus:border-brand-orange" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] uppercase tracking-wider font-semibold text-text-muted">Site Assignment</label>
-                <select required disabled={!!editingPanel} className="bg-background border border-border rounded px-3 py-2 text-small text-text focus:outline-none focus:border-primary disabled:opacity-50" value={formData.site_id} onChange={e => setFormData({...formData, site_id: e.target.value})}>
+                <label className="text-caption uppercase tracking-wider font-semibold text-txt-muted">Site Assignment</label>
+                <select required disabled={!!editingPanel} className="bg-background border border-border rounded px-3 py-2 text-small text-txt focus:outline-none focus:border-brand-orange disabled:opacity-50" value={formData.site_id} onChange={e => setFormData({...formData, site_id: e.target.value})}>
                   <option value="">Select Site</option>
                   {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
@@ -203,12 +203,12 @@ const PanelConfiguration = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] uppercase tracking-wider font-semibold text-text-muted">Rated Power (W)</label>
-                <input required type="number" min="0" step="any" className="bg-background border border-border rounded px-3 py-2 text-small text-text focus:outline-none focus:border-primary" value={formData.rated_power_w} onChange={e => setFormData({...formData, rated_power_w: e.target.value})} />
+                <label className="text-caption uppercase tracking-wider font-semibold text-txt-muted">Rated Power (W)</label>
+                <input required type="number" min="0" step="any" className="bg-background border border-border rounded px-3 py-2 text-small text-txt focus:outline-none focus:border-brand-orange" value={formData.rated_power_w} onChange={e => setFormData({...formData, rated_power_w: e.target.value})} />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] uppercase tracking-wider font-semibold text-text-muted">Status</label>
-                <select className="bg-background border border-border rounded px-3 py-2 text-small text-text focus:outline-none focus:border-primary" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
+                <label className="text-caption uppercase tracking-wider font-semibold text-txt-muted">Status</label>
+                <select className="bg-background border border-border rounded px-3 py-2 text-small text-txt focus:outline-none focus:border-brand-orange" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
                   <option value="ACTIVE">ACTIVE</option>
                   <option value="INACTIVE">INACTIVE</option>
                   <option value="MAINTENANCE">MAINTENANCE</option>
@@ -218,20 +218,20 @@ const PanelConfiguration = () => {
 
             <div className="grid grid-cols-3 gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] uppercase tracking-wider font-semibold text-text-muted">Tilt (°)</label>
-                <input required type="number" min="0" max="90" step="any" className="bg-background border border-border rounded px-3 py-2 text-small text-text focus:outline-none focus:border-primary" value={formData.tilt} onChange={e => setFormData({...formData, tilt: e.target.value})} />
+                <label className="text-caption uppercase tracking-wider font-semibold text-txt-muted">Tilt (°)</label>
+                <input required type="number" min="0" max="90" step="any" className="bg-background border border-border rounded px-3 py-2 text-small text-txt focus:outline-none focus:border-brand-orange" value={formData.tilt} onChange={e => setFormData({...formData, tilt: e.target.value})} />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] uppercase tracking-wider font-semibold text-text-muted">Azimuth (°)</label>
-                <input required type="number" min="0" max="359" step="any" className="bg-background border border-border rounded px-3 py-2 text-small text-text focus:outline-none focus:border-primary" value={formData.azimuth} onChange={e => setFormData({...formData, azimuth: e.target.value})} />
+                <label className="text-caption uppercase tracking-wider font-semibold text-txt-muted">Azimuth (°)</label>
+                <input required type="number" min="0" max="359" step="any" className="bg-background border border-border rounded px-3 py-2 text-small text-txt focus:outline-none focus:border-brand-orange" value={formData.azimuth} onChange={e => setFormData({...formData, azimuth: e.target.value})} />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] uppercase tracking-wider font-semibold text-text-muted">Sys. Loss (%)</label>
-                <input required type="number" min="0" max="100" step="any" className="bg-background border border-border rounded px-3 py-2 text-small text-text focus:outline-none focus:border-primary" value={formData.system_loss_percent} onChange={e => setFormData({...formData, system_loss_percent: e.target.value})} />
+                <label className="text-caption uppercase tracking-wider font-semibold text-txt-muted">Sys. Loss (%)</label>
+                <input required type="number" min="0" max="100" step="any" className="bg-background border border-border rounded px-3 py-2 text-small text-txt focus:outline-none focus:border-brand-orange" value={formData.system_loss_percent} onChange={e => setFormData({...formData, system_loss_percent: e.target.value})} />
               </div>
             </div>
             
-            {submitError && <span className="text-[11px] text-status-error">{submitError}</span>}
+            {submitError && <span className="text-caption text-error">{submitError}</span>}
             
             <div className="flex gap-3 mt-2">
               <Button type="button" variant="outline" onClick={() => setIsEditing(false)} disabled={isSubmitting} className="flex-1">Cancel</Button>
@@ -242,15 +242,15 @@ const PanelConfiguration = () => {
           </form>
         </div>
       ) : confirmDelete ? (
-        <div className="bg-surface border border-status-error/50 p-6 rounded shadow-sm max-w-xl">
+        <div className="bg-surface border border-error/50 p-6 rounded shadow-sm max-w-xl">
            <div className="flex flex-col gap-2 mb-4">
-             <span className="text-medium font-bold text-text">Delete Panel?</span>
-             <span className="text-small text-text-muted">Are you sure you want to permanently delete {confirmDelete.name}? Performance history related to this panel may become orphaned.</span>
+             <span className="text-body font-bold text-txt">Delete Panel?</span>
+             <span className="text-small text-txt-muted">Are you sure you want to permanently delete {confirmDelete.name}? Performance history related to this panel may become orphaned.</span>
            </div>
-           {submitError && <span className="text-[11px] text-status-error block mb-3">{submitError}</span>}
+           {submitError && <span className="text-caption text-error block mb-3">{submitError}</span>}
            <div className="flex gap-3">
              <Button variant="outline" onClick={() => setConfirmDelete(null)} disabled={isSubmitting} className="flex-1">Cancel</Button>
-             <Button variant="primary" onClick={handleDelete} disabled={isSubmitting} className="flex-1 bg-status-error hover:bg-status-error/80 text-background">
+             <Button variant="primary" onClick={handleDelete} disabled={isSubmitting} className="flex-1 bg-error hover:bg-error/80 text-background">
                {isSubmitting ? 'Deleting...' : 'Confirm Delete'}
              </Button>
            </div>
@@ -259,7 +259,7 @@ const PanelConfiguration = () => {
         <div className="border border-border bg-surface rounded overflow-hidden shadow-sm">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-border/20 text-text-muted text-[10px] uppercase tracking-wider">
+              <tr className="bg-surface-hover text-txt-muted text-caption uppercase tracking-wider">
                 <th className="py-3 px-4 font-medium border-b border-border">Panel</th>
                 <th className="py-3 px-4 font-medium border-b border-border">Site</th>
                 <th className="py-3 px-4 font-medium border-b border-border text-center">Power</th>
@@ -270,12 +270,12 @@ const PanelConfiguration = () => {
             </thead>
             <tbody>
               {panels.map((p, i) => (
-                <tr key={p.id} className={`border-b border-border/30 hover:bg-border/10 transition-colors ${i % 2 === 0 ? '' : 'bg-border/5'}`}>
-                  <td className="py-3 px-4 text-small text-text font-medium">{p.name}</td>
-                  <td className="py-3 px-4 text-small text-text-muted">{p.siteName}</td>
-                  <td className="py-3 px-4 text-center text-small font-mono text-text-muted">{p.rated_power_w} W</td>
+                <tr key={p.id} className={`border-b border-border/30 hover:bg-surface-hover/10 transition-colors ${i % 2 === 0 ? '' : 'bg-border/5'}`}>
+                  <td className="py-3 px-4 text-small text-txt font-medium">{p.name}</td>
+                  <td className="py-3 px-4 text-small text-txt-muted">{p.siteName}</td>
+                  <td className="py-3 px-4 text-center text-small font-mono text-txt-muted">{p.rated_power_w} W</td>
                   <td className="py-3 px-4 text-center">
-                    <span className="text-[9px] text-text-muted font-mono tracking-tighter" title={`Tilt: ${p.tilt}°, Azimuth: ${p.azimuth}°, Loss: ${p.system_loss_percent}%`}>
+                    <span className="text-caption text-txt-muted font-mono tracking-tighter" title={`Tilt: ${p.tilt}°, Azimuth: ${p.azimuth}°, Loss: ${p.system_loss_percent}%`}>
                       T:{p.tilt}° A:{p.azimuth}° L:{p.system_loss_percent}%
                     </span>
                   </td>
@@ -284,14 +284,14 @@ const PanelConfiguration = () => {
                   </td>
                   <td className="py-3 px-4 text-center">
                     <div className="flex items-center justify-center gap-2">
-                      <button onClick={() => handleOpenEdit(p)} className="p-1.5 text-text-muted hover:text-primary hover:bg-primary/10 rounded transition-colors"><Edit2 className="h-3.5 w-3.5" /></button>
-                      <button onClick={() => setConfirmDelete(p)} className="p-1.5 text-text-muted hover:text-status-error hover:bg-status-error/10 rounded transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => handleOpenEdit(p)} className="p-1.5 text-txt-muted hover:text-primary hover:bg-primary/10 rounded transition-colors"><Edit2 className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => setConfirmDelete(p)} className="p-1.5 text-txt-muted hover:text-error hover:bg-error/10 rounded transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
                     </div>
                   </td>
                 </tr>
               ))}
               {panels.length === 0 && (
-                <tr><td colSpan="6" className="py-8 text-center text-small text-text-muted">No panels found.</td></tr>
+                <tr><td colSpan="6" className="py-8 text-center text-small text-txt-muted">No panels found.</td></tr>
               )}
             </tbody>
           </table>

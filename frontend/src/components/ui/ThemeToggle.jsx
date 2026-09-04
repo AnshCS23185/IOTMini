@@ -1,22 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { Moon, Sun } from 'lucide-react';
-import { Button } from './Button';
 
 export const ThemeToggle = () => {
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
-    // Check initial theme preference
     const isDarkMode = document.documentElement.classList.contains('dark') ||
       (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches) ||
       localStorage.getItem('theme') === 'dark';
-    
     setIsDark(isDarkMode);
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    if (isDarkMode) document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
   }, []);
 
   const toggleTheme = () => {
@@ -31,14 +25,12 @@ export const ThemeToggle = () => {
   };
 
   return (
-    <Button
-      variant="ghost"
-      size="icon"
+    <button
       onClick={toggleTheme}
       aria-label="Toggle theme"
-      title="Toggle theme"
+      className="h-8 w-8 rounded-md flex items-center justify-center text-txt hover:bg-surface-hover transition-colors cursor-pointer"
     >
-      {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-    </Button>
+      {isDark ? <Sun className="h-[18px] w-[18px] text-txt" /> : <Moon className="h-[18px] w-[18px] text-txt" />}
+    </button>
   );
 };

@@ -34,28 +34,28 @@ const OperationalSummary = ({ data }) => {
   return (
     <div className="flex flex-col sm:flex-row gap-6 p-4 border border-border bg-surface rounded items-start sm:items-center justify-between mb-4 shadow-sm">
       <div className="flex flex-col gap-1">
-        <span className="text-small text-text-muted font-medium uppercase tracking-wider">Current Power</span>
-        <span className="text-large font-display font-semibold text-text">
+        <span className="text-small text-txt-muted font-medium uppercase tracking-wider">Current Power</span>
+        <span className="text-section font-sans font-semibold text-txt">
           {isNighttime ? '0 W' : formatPower(data.current_power_w)}
         </span>
       </div>
       
       <div className="flex flex-col gap-1">
-        <span className="text-small text-text-muted font-medium uppercase tracking-wider">Expected Power</span>
-        <span className="text-large font-display font-semibold text-text">
+        <span className="text-small text-txt-muted font-medium uppercase tracking-wider">Expected Power</span>
+        <span className="text-section font-sans font-semibold text-txt">
           {formatPower(data.expected_power_w)}
         </span>
       </div>
       
       <div className="flex flex-col gap-1">
-        <span className="text-small text-text-muted font-medium uppercase tracking-wider">Performance</span>
-        <span className="text-large font-display font-semibold text-text">
+        <span className="text-small text-txt-muted font-medium uppercase tracking-wider">Performance</span>
+        <span className="text-section font-sans font-semibold text-txt">
           {isNighttime ? 'N/A' : formatPct(data.performance_percentage)}
         </span>
       </div>
 
       <div className="flex flex-col gap-1">
-        <span className="text-small text-text-muted font-medium uppercase tracking-wider">Site Status</span>
+        <span className="text-small text-txt-muted font-medium uppercase tracking-wider">Site Status</span>
         <StatusBadge status={overallStatus} />
       </div>
     </div>

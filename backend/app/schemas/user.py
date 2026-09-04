@@ -11,7 +11,7 @@ class UserBase(BaseModel):
     status: Optional[str] = "ACTIVE"
 
 class UserCreate(UserBase):
-    password: str
+    password: Optional[str] = None
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None

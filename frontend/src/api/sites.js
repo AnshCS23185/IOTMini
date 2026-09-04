@@ -7,3 +7,16 @@ export const getSites = async () => {
 export const getSite = async (siteId) => {
   return apiClient(`/sites/${siteId}`);
 };
+
+export const updateSite = async (siteId, data) => {
+  return apiClient(`/sites/${siteId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+};
+
+export const deleteSite = async (siteId) => {
+  return apiClient(`/sites/${siteId}`, {
+    method: 'DELETE',
+  });
+};

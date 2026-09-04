@@ -10,21 +10,21 @@ const PerformanceVisualization = ({ currentPower, expectedPower }) => {
   
   const perfPct = isNighttime ? 0 : (currentPower / expectedPower) * 100;
 
-  let barColorClass = 'bg-status-healthy'; // Sage Teal
+  let barColorClass = 'bg-success'; // Sage Teal
   if (isNighttime) {
-    barColorClass = 'bg-status-neutral'; // Lavender
+    barColorClass = 'bg-neutral'; // Lavender
   } else if (perfPct < 90) {
-    barColorClass = 'bg-status-warning'; // Deep Brown / Solar Orange depending on theme
+    barColorClass = 'bg-warning'; // Deep Brown / Solar Orange depending on theme
   } else if (perfPct < 95) {
-    barColorClass = 'bg-status-attention'; // Solar Orange
+    barColorClass = 'bg-warning'; // Solar Orange
   }
 
   return (
     <div className="flex flex-col gap-3 p-4 border border-border bg-surface rounded shadow-sm h-full justify-center">
-      <h3 className="text-small font-semibold text-text uppercase tracking-wider mb-2">Performance Profile</h3>
+      <h3 className="text-small font-semibold text-txt uppercase tracking-wider mb-2">Performance Profile</h3>
       
       <div className="flex flex-col gap-1">
-        <div className="flex justify-between text-small text-text-muted mb-1">
+        <div className="flex justify-between text-small text-txt-muted mb-1">
           <span>Expected</span>
           <span>{expectedPower.toFixed(1)} W</span>
         </div>
@@ -37,7 +37,7 @@ const PerformanceVisualization = ({ currentPower, expectedPower }) => {
       </div>
 
       <div className="flex flex-col gap-1 mt-2">
-        <div className="flex justify-between text-small text-text-muted mb-1">
+        <div className="flex justify-between text-small text-txt-muted mb-1">
           <span>Actual</span>
           <span>{isNighttime ? '0.0 W' : `${currentPower.toFixed(1)} W`}</span>
         </div>

@@ -3,19 +3,66 @@ import { Badge } from './Badge';
 import { cn } from '../../utils/cn';
 
 const statusConfig = {
-  HEALTHY: { bg: 'bg-status-healthy/10', text: 'text-status-healthy', border: 'border-status-healthy/20', icon: 'bg-status-healthy' },
-  ATTENTION: { bg: 'bg-status-attention/10', text: 'text-status-attention', border: 'border-status-attention/20', icon: 'bg-status-attention' },
-  UNDERPERFORMING: { bg: 'bg-status-warning/10', text: 'text-status-warning', border: 'border-status-warning/20', icon: 'bg-status-warning' },
-  OFFLINE: { bg: 'bg-status-error/10', text: 'text-status-error', border: 'border-status-error/20', icon: 'bg-status-error' },
-  ERROR: { bg: 'bg-status-error/10', text: 'text-status-error', border: 'border-status-error/20', icon: 'bg-status-error' },
-  WEATHER_RELATED: { bg: 'bg-status-info/10', text: 'text-status-info', border: 'border-status-info/20', icon: 'bg-status-info' },
-  PENDING: { bg: 'bg-status-neutral/10', text: 'text-status-neutral', border: 'border-status-neutral/20', icon: 'bg-status-neutral' },
-  DEFAULT: { bg: 'bg-surface', text: 'text-text', border: 'border-border', icon: 'bg-border' },
+  HEALTHY: { 
+    bg: 'bg-green-500/10', 
+    text: 'text-green-600 dark:text-[#4ADE80]', 
+    border: 'border-green-500/25', 
+    dot: 'bg-green-500 dark:bg-[#4ADE80]' 
+  },
+  ATTENTION: { 
+    bg: 'bg-amber-500/10', 
+    text: 'text-amber-600 dark:text-[#FBBF24]', 
+    border: 'border-amber-500/25', 
+    dot: 'bg-amber-500 dark:bg-[#FBBF24]' 
+  },
+  UNDERPERFORMING: { 
+    bg: 'bg-red-500/10', 
+    text: 'text-red-600 dark:text-[#F87171]', 
+    border: 'border-red-500/25', 
+    dot: 'bg-red-500 dark:bg-[#F87171]' 
+  },
+  OFFLINE: { 
+    bg: 'bg-neutral-500/10', 
+    text: 'text-neutral-700 dark:text-[#D4D4D4]', 
+    border: 'border-neutral-500/25', 
+    dot: 'bg-neutral-400 dark:bg-neutral-400' 
+  },
+  ERROR: { 
+    bg: 'bg-red-500/10', 
+    text: 'text-red-600 dark:text-[#F87171]', 
+    border: 'border-red-500/25', 
+    dot: 'bg-red-500 dark:bg-[#F87171]' 
+  },
+  WEATHER_RELATED: { 
+    bg: 'bg-sky-500/10', 
+    text: 'text-sky-600 dark:text-[#6C8F8A]', 
+    border: 'border-sky-500/25', 
+    dot: 'bg-sky-500 dark:bg-[#6C8F8A]' 
+  },
+  PENDING: { 
+    bg: 'bg-neutral-500/10', 
+    text: 'text-neutral-700 dark:text-[#D4D4D4]', 
+    border: 'border-neutral-500/25', 
+    dot: 'bg-neutral-400 dark:bg-neutral-400' 
+  },
+  ACTIVE: {
+    bg: 'bg-green-500/10', 
+    text: 'text-green-600 dark:text-[#4ADE80]', 
+    border: 'border-green-500/25', 
+    dot: 'bg-green-500 dark:bg-[#4ADE80]' 
+  },
+  DEFAULT: { 
+    bg: 'bg-surface-secondary', 
+    text: 'text-txt-secondary', 
+    border: 'border-border', 
+    dot: 'bg-border-strong' 
+  },
 };
 
 const mapStatus = (status) => {
   const normalized = String(status).toUpperCase();
-  if (normalized.includes('HEALTHY') || normalized.includes('ACTIVE') || normalized.includes('ACKNOWLEDGED')) return 'HEALTHY';
+  if (normalized.includes('HEALTHY') || normalized.includes('ACKNOWLEDGED')) return 'HEALTHY';
+  if (normalized === 'ACTIVE') return 'ACTIVE';
   if (normalized.includes('WEATHER')) return 'WEATHER_RELATED';
   if (normalized.includes('ATTENTION') || normalized.includes('SHADING')) return 'ATTENTION';
   if (normalized.includes('UNDERPERFORMING') || normalized.includes('LOSS')) return 'UNDERPERFORMING';
@@ -32,15 +79,15 @@ export const StatusBadge = ({ status, className }) => {
   return (
     <Badge 
       className={cn(
-        'border gap-1.5 px-2 py-0.5', 
+        'gap-1.5 px-2 py-0.5 text-caption font-medium border', 
         config.bg, 
         config.text, 
         config.border, 
         className
       )}
     >
-      <span className={cn('h-1.5 w-1.5 rounded-full', config.icon)} aria-hidden="true" />
-      {status}
+      <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', config.dot)} aria-hidden="true" />
+      <span>{status}</span>
     </Badge>
   );
 };
