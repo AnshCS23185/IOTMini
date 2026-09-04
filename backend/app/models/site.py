@@ -18,3 +18,11 @@ class Site(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     organization = relationship("Organization", backref="solar_sites")
+
+    @property
+    def location(self):
+        return self.address
+
+    @location.setter
+    def location(self, value):
+        self.address = value

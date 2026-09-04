@@ -34,34 +34,39 @@ export const NewClientModal = ({ isOpen, onClose, onSuccess }) => {
         organization_id: org.id,
         name: siteData.name,
         location: siteData.location,
-        latitude: parseFloat(siteData.latitude),
-        longitude: parseFloat(siteData.longitude),
-        timezone: siteData.timezone,
-        status: siteData.status
+        address: siteData.location,
+        latitude: parseFloat(siteData.latitude) || 0.0,
+        longitude: parseFloat(siteData.longitude) || 0.0,
+        timezone: siteData.timezone || 'UTC',
+        status: siteData.status || 'ACTIVE'
       });
 
-      // 3. Create User if requested
+      // 3. Create User if requested and associate with site
       let portalUser = null;
+      let portalError = null;
       if (clientData.createPortal && clientData.email) {
         try {
           portalUser = await createUser({
-            name: clientData.contactName,
-            email: clientData.email,
+            name: clientData.contactName || clientData.name,
+            email: clientData.email.trim(),
             role: 'USER',
-            organization_id: org.id
+            organization_id: org.id,
+            site_id: site.id
           });
         } catch (err) {
           console.error("Failed to create portal user:", err);
-          // If user creation fails, we still created the org/site, so we can show partial success
+          portalError = err.message || 'Failed to dispatch email.';
         }
       }
 
       setSuccessResult({
         org,
         site,
-        user: portalUser
+        user: portalUser,
+        userError: portalError
       });
       setStep(5); // Success step
+
       
     } catch (err) {
       console.error(err);
@@ -166,32 +171,51 @@ export const NewClientModal = ({ isOpen, onClose, onSuccess }) => {
           {/* STEP 3: PORTAL ACCESS */}
           {step === 3 && (
             <div className="flex flex-col gap-4">
-              <div className="bg-surface border border-border rounded p-4 flex flex-col gap-2">
-                <h3 className="text-body-sm font-semibold text-txt">Client Portal Access</h3>
-                <p className="text-small text-txt-muted mb-2">Configure access for the primary contact to view their solar site performance.</p>
+              <div className="bg-surface border border-border rounded p-4 flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-body-sm font-semibold text-txt">Client Portal Access</h3>
+                    <p className="text-small text-txt-muted">Configure customer access to view this site's performance.</p>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={clientData.createPortal} 
+                      onChange={e => setClientData({...clientData, createPortal: e.target.checked})} 
+                      className="rounded text-primary focus:ring-brand-orange h-4 w-4" 
+                    />
+                    <span className="text-small font-medium text-txt">Enable Portal Access</span>
+                  </label>
+                </div>
                 
                 {clientData.createPortal ? (
-                  <>
-                    <div className="flex justify-between py-1 border-b border-border/50">
-                      <span className="text-caption text-txt-muted uppercase">Contact</span>
-                      <span className="text-small font-medium text-txt">{clientData.contactName || 'Not specified'}</span>
+                  <div className="space-y-3 pt-2 border-t border-border">
+                    <Input 
+                      label="Contact Name" 
+                      value={clientData.contactName} 
+                      onChange={e => setClientData({...clientData, contactName: e.target.value})} 
+                      placeholder="e.g. Rahul Sharma" 
+                    />
+                    <Input 
+                      label="Customer Email Address (Login & Invitation)" 
+                      type="email" 
+                      value={clientData.email} 
+                      onChange={e => setClientData({...clientData, email: e.target.value})} 
+                      placeholder="customer@domain.com" 
+                      required 
+                    />
+                    <div className="flex justify-between items-center py-2 border-t border-border/50 text-small">
+                      <span className="text-caption text-txt-muted uppercase font-semibold">Assigned Role</span>
+                      <span className="font-semibold text-[#D59D80]">USER (Customer)</span>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-border/50">
-                      <span className="text-caption text-txt-muted uppercase">Email (Username)</span>
-                      <span className="text-small font-medium text-txt">{clientData.email || 'Not specified'}</span>
+                    <div className="p-3 bg-success/10 border border-success/20 rounded text-small text-txt">
+                      <strong>SMTP Email Dispatch:</strong> Upon creation, PanelIQ will automatically generate a secure 4-digit PIN and send an email invitation to <strong>{clientData.email || 'the customer'}</strong>.
                     </div>
-                    <div className="flex justify-between py-1 border-b border-border/50">
-                      <span className="text-caption text-txt-muted uppercase">Role</span>
-                      <span className="text-small font-medium text-txt">USER</span>
-                    </div>
-                    <div className="mt-2 p-3 bg-success/10 border border-success/20 rounded">
-                      <p className="text-caption text-txt leading-relaxed">
-                        <strong>Note:</strong> The system will automatically generate a secure 4-digit PIN and send it via email to the client upon creation.
-                      </p>
-                    </div>
-                  </>
+                  </div>
                 ) : (
-                  <p className="text-small text-txt italic">Portal access creation was skipped in Step 1.</p>
+                  <p className="text-small text-txt-muted italic py-2">
+                    Portal access creation is disabled. The client will not receive an invitation email. You can manage access anytime from the Sites table.
+                  </p>
                 )}
               </div>
             </div>
@@ -204,25 +228,31 @@ export const NewClientModal = ({ isOpen, onClose, onSuccess }) => {
                 <div className="bg-surface px-4 py-2 border-b border-border"><h4 className="text-caption font-semibold uppercase text-txt-muted">Client Details</h4></div>
                 <div className="p-4 flex flex-col gap-1 text-small">
                   <div className="flex justify-between"><span className="text-txt-muted">Organization:</span><span className="font-medium">{clientData.name}</span></div>
-                  <div className="flex justify-between"><span className="text-txt-muted">Contact:</span><span className="font-medium">{clientData.contactName}</span></div>
-                  <div className="flex justify-between"><span className="text-txt-muted">Email:</span><span className="font-medium">{clientData.email}</span></div>
+                  <div className="flex justify-between"><span className="text-txt-muted">Contact:</span><span className="font-medium">{clientData.contactName || '—'}</span></div>
+                  <div className="flex justify-between"><span className="text-txt-muted">Phone:</span><span className="font-medium">{clientData.phone || '—'}</span></div>
                 </div>
               </div>
               <div className="border border-border rounded overflow-hidden">
                 <div className="bg-surface px-4 py-2 border-b border-border"><h4 className="text-caption font-semibold uppercase text-txt-muted">Site Details</h4></div>
                 <div className="p-4 flex flex-col gap-1 text-small">
                   <div className="flex justify-between"><span className="text-txt-muted">Site Name:</span><span className="font-medium">{siteData.name}</span></div>
-                  <div className="flex justify-between"><span className="text-txt-muted">Location:</span><span className="font-medium">{siteData.location}</span></div>
+                  <div className="flex justify-between"><span className="text-txt-muted">Location:</span><span className="font-medium">{siteData.location || '—'}</span></div>
                   <div className="flex justify-between"><span className="text-txt-muted">Coordinates:</span><span className="font-medium">{siteData.latitude}, {siteData.longitude}</span></div>
+                  <div className="flex justify-between"><span className="text-txt-muted">Timezone:</span><span className="font-medium">{siteData.timezone}</span></div>
                 </div>
               </div>
               <div className="border border-border rounded overflow-hidden">
-                <div className="bg-surface px-4 py-2 border-b border-border"><h4 className="text-caption font-semibold uppercase text-txt-muted">Portal Access</h4></div>
+                <div className="bg-surface px-4 py-2 border-b border-border"><h4 className="text-caption font-semibold uppercase text-txt-muted">Portal Access & SMTP</h4></div>
                 <div className="p-4 flex flex-col gap-1 text-small">
-                  {clientData.createPortal ? (
-                    <div className="flex justify-between"><span className="text-txt-muted">Status:</span><span className="font-medium text-success">Will generate PIN</span></div>
+                  {clientData.createPortal && clientData.email ? (
+                    <>
+                      <div className="flex justify-between"><span className="text-txt-muted">Status:</span><span className="font-medium text-success">Enabled</span></div>
+                      <div className="flex justify-between"><span className="text-txt-muted">Recipient:</span><span className="font-medium text-txt">{clientData.email}</span></div>
+                      <div className="flex justify-between"><span className="text-txt-muted">Role:</span><span className="font-medium text-[#D59D80]">USER</span></div>
+                      <div className="text-caption text-txt-muted pt-1">A 4-digit temporary PIN will be generated and dispatched via SMTP.</div>
+                    </>
                   ) : (
-                    <div className="flex justify-between"><span className="text-txt-muted">Status:</span><span className="font-medium">Skipped</span></div>
+                    <div className="flex justify-between"><span className="text-txt-muted">Status:</span><span className="font-medium text-txt-muted">Disabled (Skipped)</span></div>
                   )}
                 </div>
               </div>
@@ -235,25 +265,31 @@ export const NewClientModal = ({ isOpen, onClose, onSuccess }) => {
               <CheckCircle2 className="h-12 w-12 text-success mb-4" />
               <h3 className="text-subsection font-semibold text-txt mb-2">Client Created Successfully</h3>
               <p className="text-small text-txt-muted mb-6">
-                {successResult.org.name} has been onboarded and {successResult.site.name} is ready for device pairing.
+                <strong>{successResult.org.name}</strong> has been onboarded and <strong>{successResult.site.name}</strong> is ready for device monitoring.
               </p>
 
               {successResult.user ? (
                 <div className="w-full bg-surface border border-border rounded p-4 text-left mb-2">
-                  <h4 className="text-small font-semibold text-txt mb-2">Portal Access Created</h4>
+                  <h4 className="text-small font-semibold text-txt mb-2">Portal Access Dispatched</h4>
                   <div className="p-3 bg-success/10 border border-success/20 rounded">
                     <p className="text-small text-txt font-medium text-center">
-                      An automated email containing a 4-digit invitation PIN has been securely dispatched to {successResult.user.email}.
+                      An invitation email with a temporary access PIN has been dispatched via SMTP to <strong>{successResult.user.email}</strong>.
                     </p>
                   </div>
                 </div>
+              ) : successResult.userError ? (
+                <div className="w-full bg-surface border border-error/30 rounded p-4 text-left mb-2">
+                  <h4 className="text-small font-semibold text-error mb-1">Portal Access Error</h4>
+                  <p className="text-small text-txt-muted">{successResult.userError}</p>
+                </div>
               ) : (
-                 <div className="w-full bg-surface border border-border rounded p-4 text-center">
-                   <p className="text-small text-txt-muted">Portal access was not created for this client.</p>
-                 </div>
+                <div className="w-full bg-surface border border-border rounded p-4 text-center">
+                  <p className="text-small text-txt-muted">Portal access was not created for this client.</p>
+                </div>
               )}
             </div>
           )}
+
         </div>
 
         {/* Footer Actions */}
