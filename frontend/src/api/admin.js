@@ -40,13 +40,4 @@ export const deleteSite = async (siteId) => {
   return apiClient(`/sites/${siteId}`, { method: 'DELETE' });
 };
 
-// Panels
-export const createPanel = async (siteId, data) => {
-  return apiClient(`/sites/${siteId}/panels`, { method: 'POST', body: JSON.stringify(data) });
-};
-export const updatePanel = async (panelId, data) => {
-  return apiClient(`/panels/${panelId}`, { method: 'PUT', body: JSON.stringify(data) });
-};
-export const deletePanel = async (panelId) => {
-  return apiClient(`/panels/${panelId}`, { method: 'DELETE' });
-};
+// Panel CRUD functions moved to api/panels.js

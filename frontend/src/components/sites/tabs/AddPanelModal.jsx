@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { createPanel } from '../../../api/admin';
+import { createPanel } from '../../../api/panels';
 import { Button } from '../../ui/Button';
 import { Input } from '../../ui/Input';
 import { X, CheckCircle2, AlertCircle } from 'lucide-react';
