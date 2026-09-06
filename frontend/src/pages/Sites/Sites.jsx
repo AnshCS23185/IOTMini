@@ -26,8 +26,13 @@ import { EditSiteModal } from '../../components/sites/EditSiteModal';
 import { ManageAccessModal } from '../../components/sites/ManageAccessModal';
 import { DeactivateModal } from '../../components/sites/DeactivateModal';
 import { DeleteSiteModal } from '../../components/sites/DeleteSiteModal';
+import { useAuth } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const Sites = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role?.toUpperCase() === 'ADMIN';
+  const navigate = useNavigate();
   const [sitesData, setSitesData] = useState([]);
   const [organizations, setOrganizations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -60,8 +65,14 @@ const Sites = () => {
       setError(null);
       const [sitesList, orgsList] = await Promise.all([
         getSites(),
-        getOrganizations().catch(() => [])
+        isAdmin ? getOrganizations().catch(() => []) : Promise.resolve([])
       ]);
+      
+      if (!isAdmin && sitesList.length > 0) {
+        navigate(`/sites/${sitesList[0].id}`);
+        return;
+      }
+      
       setOrganizations(orgsList);
 
       const richSites = await Promise.all(sitesList.map(async (site) => {

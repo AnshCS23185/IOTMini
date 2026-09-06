@@ -12,8 +12,12 @@ import { DevicesTab } from '../../components/sites/tabs/DevicesTab';
 import { DiagnosticsTab } from '../../components/sites/tabs/DiagnosticsTab';
 import { ConfigurationTab } from '../../components/sites/tabs/ConfigurationTab';
 import { ClientAccessTab } from '../../components/sites/tabs/ClientAccessTab';
+import { useAuth } from '../../context/AuthContext';
 
 const SiteDetails = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role?.toUpperCase() === 'ADMIN';
+
   const { siteId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -89,11 +93,14 @@ const SiteDetails = () => {
   const navItems = [
     { id: 'overview', label: 'Overview', path: `/sites/${siteId}/overview` },
     { id: 'panels', label: 'Panels', path: `/sites/${siteId}/panels` },
-    { id: 'devices', label: 'Devices', path: `/sites/${siteId}/devices` },
-    { id: 'diagnostics', label: 'Diagnostics', path: `/sites/${siteId}/diagnostics` },
-    { id: 'configuration', label: 'Configuration', path: `/sites/${siteId}/configuration` },
-    { id: 'access', label: 'Access', path: `/sites/${siteId}/access` },
+    { id: 'diagnostics', label: isAdmin ? 'Diagnostics' : 'Alerts', path: `/sites/${siteId}/diagnostics` },
   ];
+
+  if (isAdmin) {
+    navItems.push({ id: 'devices', label: 'Devices', path: `/sites/${siteId}/devices` });
+    navItems.push({ id: 'configuration', label: 'Configuration', path: `/sites/${siteId}/configuration` });
+    navItems.push({ id: 'access', label: 'Access', path: `/sites/${siteId}/access` });
+  }
 
   const currentTab = location.pathname.split('/').pop() || 'overview';
   if (currentTab === siteId) {
@@ -137,34 +144,36 @@ const SiteDetails = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Link 
-            to={`/sites/${siteId}/configuration`}
-            className="flex items-center gap-1 px-3 h-[36px] border border-border text-txt rounded-lg text-small font-medium hover:bg-surface-hover transition-colors"
-          >
-            <Edit2 className="h-3.5 w-3.5 text-txt" />
-            Edit
-          </Link>
-          
-          <div className="relative group">
-            <Button variant="outline" size="small" className="px-2.5 h-[36px]">
-              <MoreHorizontal className="h-4 w-4 text-txt" />
-            </Button>
-            <div className="absolute right-0 top-full mt-1.5 w-48 bg-surface-elevated border border-border rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 py-1">
-              <Link to={`/sites/${siteId}/configuration`} className="w-full text-left px-3 py-2 text-small text-txt hover:bg-surface-hover flex items-center">Edit Site</Link>
-              <Link to={`/sites/${siteId}/panels`} className="w-full text-left px-3 py-2 text-small text-txt hover:bg-surface-hover flex items-center">Manage Panels</Link>
-              <Link to={`/sites/${siteId}/devices`} className="w-full text-left px-3 py-2 text-small text-txt hover:bg-surface-hover flex items-center">Manage Devices</Link>
-              <Link to={`/sites/${siteId}/access`} className="w-full text-left px-3 py-2 text-small text-txt hover:bg-surface-hover flex items-center">Manage Client Access</Link>
-              <div className="h-px bg-border my-1"></div>
-              <button 
-                className="w-full text-left px-3 py-2 text-small text-error hover:bg-error/10 flex items-center cursor-pointer"
-                onClick={() => setShowDeleteConfirm(true)}
-              >
-                Delete Site
-              </button>
+        {isAdmin && (
+          <div className="flex items-center gap-2">
+            <Link 
+              to={`/sites/${siteId}/configuration`}
+              className="flex items-center gap-1 px-3 h-[36px] border border-border text-txt rounded-lg text-small font-medium hover:bg-surface-hover transition-colors"
+            >
+              <Edit2 className="h-3.5 w-3.5 text-txt" />
+              Edit
+            </Link>
+            
+            <div className="relative group">
+              <Button variant="outline" size="small" className="px-2.5 h-[36px]">
+                <MoreHorizontal className="h-4 w-4 text-txt" />
+              </Button>
+              <div className="absolute right-0 top-full mt-1.5 w-48 bg-surface-elevated border border-border rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 py-1">
+                <Link to={`/sites/${siteId}/configuration`} className="w-full text-left px-3 py-2 text-small text-txt hover:bg-surface-hover flex items-center">Edit Site</Link>
+                <Link to={`/sites/${siteId}/panels`} className="w-full text-left px-3 py-2 text-small text-txt hover:bg-surface-hover flex items-center">Manage Panels</Link>
+                <Link to={`/sites/${siteId}/devices`} className="w-full text-left px-3 py-2 text-small text-txt hover:bg-surface-hover flex items-center">Manage Devices</Link>
+                <Link to={`/sites/${siteId}/access`} className="w-full text-left px-3 py-2 text-small text-txt hover:bg-surface-hover flex items-center">Manage Client Access</Link>
+                <div className="h-px bg-border my-1"></div>
+                <button 
+                  className="w-full text-left px-3 py-2 text-small text-error hover:bg-error/10 flex items-center cursor-pointer"
+                  onClick={() => setShowDeleteConfirm(true)}
+                >
+                  Delete Site
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Navigation Tabs */}
