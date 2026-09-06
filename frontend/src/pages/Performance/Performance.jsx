@@ -5,10 +5,14 @@ import { getDashboard } from '../../api/dashboard';
 import { getPanelPerformanceHistory } from '../../api/performance';
 import PerformanceChart from './PerformanceChart';
 import { Loader2, Calendar, MapPin, Zap, Thermometer, Droplets, Cloud, CloudRain } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { Button } from '../../components/ui/Button';
 
 const Performance = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role?.toUpperCase() === 'ADMIN';
+
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedSiteId = searchParams.get('siteId') || '';
   const setSelectedSiteId = (id) => {
@@ -37,6 +41,10 @@ const Performance = () => {
         setLoading(true);
         const sitesList = await getSites();
         setSites(sitesList);
+        
+        if (!isAdmin && sitesList.length > 0 && !searchParams.get('siteId')) {
+          setSelectedSiteId(sitesList[0].id);
+        }
       } catch (err) {
         setError('Failed to load authorized sites.');
       } finally {
@@ -169,19 +177,28 @@ const Performance = () => {
         
         <div className="flex items-center gap-2.5">
           {/* Site Selector */}
-          <div className="flex items-center bg-surface border border-border rounded-lg px-3 h-[38px]">
-            <MapPin className="h-4 w-4 text-txt-muted mr-2" />
-            <select 
-              className={`bg-transparent text-small font-medium focus:outline-none cursor-pointer ${!selectedSiteId ? 'text-txt-muted' : 'text-txt'}`}
-              value={selectedSiteId}
-              onChange={(e) => setSelectedSiteId(e.target.value)}
-            >
-              <option value="" disabled className="bg-surface text-txt-muted">Select Site ▾</option>
-              {sites.map(s => (
-                <option key={s.id} value={s.id} className="bg-surface text-txt">{s.name}</option>
-              ))}
-            </select>
-          </div>
+          {isAdmin ? (
+            <div className="flex items-center bg-surface border border-border rounded-lg px-3 h-[38px]">
+              <MapPin className="h-4 w-4 text-txt-muted mr-2" />
+              <select 
+                className={`bg-transparent text-small font-medium focus:outline-none cursor-pointer ${!selectedSiteId ? 'text-txt-muted' : 'text-txt'}`}
+                value={selectedSiteId}
+                onChange={(e) => setSelectedSiteId(e.target.value)}
+              >
+                <option value="" disabled className="bg-surface text-txt-muted">Select Site ▾</option>
+                {sites.map(s => (
+                  <option key={s.id} value={s.id} className="bg-surface text-txt">{s.name}</option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div className="flex items-center bg-surface border border-border rounded-lg px-3 h-[38px]">
+              <MapPin className="h-4 w-4 text-primary mr-2" />
+              <span className="text-small font-medium text-txt">
+                {sites.find(s => s.id == selectedSiteId)?.name || 'My Solar Installation'}
+              </span>
+            </div>
+          )}
 
           {/* Time Range */}
           {selectedSiteId && (

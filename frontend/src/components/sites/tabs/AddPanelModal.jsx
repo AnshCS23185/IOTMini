@@ -10,6 +10,7 @@ export const AddPanelModal = ({ isOpen, onClose, siteId, onSuccess }) => {
   const [success, setSuccess] = useState(false);
   
   const [panelData, setPanelData] = useState({
+    name: '',
     rated_power_w: 400,
     tilt: 20,
     azimuth: 180,
@@ -25,6 +26,7 @@ export const AddPanelModal = ({ isOpen, onClose, siteId, onSuccess }) => {
     
     try {
       await createPanel(siteId, {
+        name: panelData.name,
         rated_power_w: Number(panelData.rated_power_w),
         tilt: Number(panelData.tilt),
         azimuth: Number(panelData.azimuth),
@@ -46,7 +48,7 @@ export const AddPanelModal = ({ isOpen, onClose, siteId, onSuccess }) => {
   };
 
   const resetAndClose = () => {
-    setPanelData({ rated_power_w: 400, tilt: 20, azimuth: 180, system_loss_percent: 14, status: 'ACTIVE' });
+    setPanelData({ name: '', rated_power_w: 400, tilt: 20, azimuth: 180, system_loss_percent: 14, status: 'ACTIVE' });
     setError('');
     setSuccess(false);
     onClose();
@@ -83,10 +85,20 @@ export const AddPanelModal = ({ isOpen, onClose, siteId, onSuccess }) => {
               )}
               
               <Input 
-                label="Rated Power (W)" 
+                label="Panel Name *" 
+                type="text" 
+                value={panelData.name} 
+                onChange={e => setPanelData({...panelData, name: e.target.value})} 
+                required
+              />
+              
+              <Input 
+                label="Rated Power (W) *" 
                 type="number" 
                 value={panelData.rated_power_w} 
                 onChange={e => setPanelData({...panelData, rated_power_w: e.target.value})} 
+                min="1" max="10000"
+                required
               />
               
               <div className="grid grid-cols-2 gap-4">

@@ -80,7 +80,7 @@ export const Login = () => {
                 placeholder="name@organization.com"
                 required
                 autoComplete="email"
-                className="input-base pl-9 w-full"
+                className="input-base !pl-9 w-full"
               />
             </div>
           </div>
@@ -105,7 +105,7 @@ export const Login = () => {
                 placeholder="••••••••"
                 required
                 autoComplete="current-password"
-                className="input-base pl-9 pr-10 w-full font-mono"
+                className="input-base !pl-9 !pr-10 w-full font-mono"
               />
               <button
                 type="button"

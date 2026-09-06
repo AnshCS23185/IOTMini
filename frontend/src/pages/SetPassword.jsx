@@ -79,7 +79,7 @@ export const SetPassword = () => {
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
                   placeholder="At least 6 characters"
-                  className="input-base pl-9 w-full font-mono"
+                  className="input-base !pl-9 w-full font-mono"
                 />
               </div>
             </div>
@@ -94,7 +94,7 @@ export const SetPassword = () => {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   placeholder="Repeat new password"
-                  className="input-base pl-9 w-full font-mono"
+                  className="input-base !pl-9 w-full font-mono"
                 />
               </div>
             </div>
