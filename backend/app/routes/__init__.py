@@ -9,6 +9,7 @@ from .weather import router as weather_router
 from .performance import router as performance_router
 from .diagnostics import router as diagnostics_router
 from .control import router as control_router
+from .solar_insights import router as solar_insights_router
 
 api_router = APIRouter()
 api_router.include_router(auth_router)
@@ -21,3 +22,4 @@ api_router.include_router(weather_router)
 api_router.include_router(performance_router)
 api_router.include_router(diagnostics_router)
 api_router.include_router(control_router)
+api_router.include_router(solar_insights_router)

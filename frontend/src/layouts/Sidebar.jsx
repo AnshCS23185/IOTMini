@@ -2,16 +2,17 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   LayoutDashboard, MapPin, Grid2X2, Activity, 
-  AlertTriangle, Cpu, Settings, Server
+  AlertTriangle, Cpu, Settings, Server, Sun
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../utils/cn';
 
 const navItems = [
   { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['ADMIN', 'USER', 'VIEWER'] },
-  { name: 'Sites', path: '/sites', icon: MapPin, roles: ['ADMIN', 'USER'] },
+  { name: 'Sites', path: '/sites', icon: MapPin, roles: ['ADMIN'] },
   { name: 'Panels', path: '/panels', icon: Grid2X2, roles: ['ADMIN', 'USER'] },
   { name: 'Performance', path: '/performance', icon: Activity, roles: ['ADMIN', 'USER', 'VIEWER'] },
+  { name: 'Insights', path: '/insights', icon: Sun, roles: ['ADMIN', 'USER', 'VIEWER'] },
   { name: 'Diagnostics', path: '/diagnostics', icon: Server, roles: ['ADMIN', 'USER'] },
   { name: 'Alerts', path: '/alerts', icon: AlertTriangle, roles: ['ADMIN', 'USER', 'VIEWER'] },
   { name: 'Devices', path: '/devices', icon: Cpu, roles: ['ADMIN'] },

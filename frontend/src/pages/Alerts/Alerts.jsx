@@ -4,6 +4,7 @@ import { getSiteAlerts } from '../../api/alerts';
 import { getSitePanels } from '../../api/panels';
 import { Filter, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
+import { useAuth } from '../../context/AuthContext';
 
 const SeverityBadge = ({ severity }) => {
   let badgeStyle = 'bg-surface-secondary text-txt-muted border-border';
@@ -19,6 +20,9 @@ const SeverityBadge = ({ severity }) => {
 };
 
 const Alerts = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
+  
   const [sites, setSites] = useState([]);
   const [activeAlerts, setActiveAlerts] = useState([]);
   const [resolvedAlerts, setResolvedAlerts] = useState([]);
@@ -39,9 +43,14 @@ const Alerts = () => {
 
       let allActive = [];
       let allResolved = [];
+      
+      let effectiveSiteId = selectedSiteId;
+      if (!isAdmin && sitesList.length > 0) {
+        effectiveSiteId = sitesList[0].id.toString();
+      }
 
       for (const site of sitesList) {
-        if (selectedSiteId !== 'ALL' && selectedSiteId !== site.id.toString()) continue;
+        if (effectiveSiteId !== 'ALL' && effectiveSiteId !== site.id.toString()) continue;
         
         try {
           const panels = await getSitePanels(site.id);
@@ -116,19 +125,21 @@ const Alerts = () => {
         
         {/* Filters */}
         <div className="flex items-center gap-2.5">
-          <div className="flex items-center bg-surface border border-border rounded-lg px-3 h-[38px]">
-            <Filter className="h-4 w-4 text-txt-muted mr-2" />
-            <select 
-              className="bg-transparent text-small text-txt font-medium focus:outline-none cursor-pointer"
-              value={selectedSiteId}
-              onChange={(e) => setSelectedSiteId(e.target.value)}
-            >
-              <option value="ALL" className="bg-surface text-txt">All Sites</option>
-              {sites.map(s => (
-                <option key={s.id} value={s.id} className="bg-surface text-txt">{s.name}</option>
-              ))}
-            </select>
-          </div>
+          {isAdmin && (
+            <div className="flex items-center bg-surface border border-border rounded-lg px-3 h-[38px]">
+              <Filter className="h-4 w-4 text-txt-muted mr-2" />
+              <select 
+                className="bg-transparent text-small text-txt font-medium focus:outline-none cursor-pointer"
+                value={selectedSiteId}
+                onChange={(e) => setSelectedSiteId(e.target.value)}
+              >
+                <option value="ALL" className="bg-surface text-txt">All Sites</option>
+                {sites.map(s => (
+                  <option key={s.id} value={s.id} className="bg-surface text-txt">{s.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="flex items-center bg-surface border border-border rounded-lg px-3 h-[38px]">
             <Filter className="h-4 w-4 text-txt-muted mr-2" />

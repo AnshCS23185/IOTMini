@@ -24,6 +24,7 @@ import UserManagement from '../pages/Settings/Admin/UserManagement';
 import RolesPermissions from '../pages/Settings/Admin/RolesPermissions';
 import SiteAdministration from '../pages/Settings/Admin/SiteAdministration';
 import PanelConfiguration from '../pages/Settings/Admin/PanelConfiguration';
+import SolarInsights from '../pages/SolarInsights/SolarInsights';
 
 // Simple RBAC Wrapper
 const ProtectedRoute = ({ children, roles }) => {
@@ -78,6 +79,12 @@ export const AppRoutes = () => {
         <Route path="performance" element={
           <ProtectedRoute roles={['ADMIN', 'USER', 'VIEWER']}>
             <Performance />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="insights" element={
+          <ProtectedRoute roles={['ADMIN', 'USER', 'VIEWER']}>
+            <SolarInsights />
           </ProtectedRoute>
         } />
         

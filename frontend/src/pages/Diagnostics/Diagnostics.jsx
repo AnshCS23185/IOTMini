@@ -6,8 +6,12 @@ import { getPanelDiagnostic } from '../../api/diagnostics';
 import { Filter } from 'lucide-react';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { Button } from '../../components/ui/Button';
+import { useAuth } from '../../context/AuthContext';
 
 const Diagnostics = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
+  
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedSiteId = searchParams.get('siteId') || '';
   const setSelectedSiteId = (id) => {
@@ -36,9 +40,15 @@ const Diagnostics = () => {
       setSitesList(sites);
       
       let allPanels = [];
+      let currentSiteId = selectedSiteId;
       
-      if (selectedSiteId) {
-        const site = sites.find(s => s.id.toString() === selectedSiteId);
+      if (!currentSiteId && !isAdmin && sites.length > 0) {
+        currentSiteId = sites[0].id.toString();
+        setSelectedSiteId(currentSiteId);
+      }
+      
+      if (currentSiteId) {
+        const site = sites.find(s => s.id.toString() === currentSiteId);
         if (site) {
           try {
             const panels = await getSitePanels(site.id);
@@ -105,19 +115,21 @@ const Diagnostics = () => {
         
         <div className="flex items-center gap-2.5">
           {/* Site Filter */}
-          <div className="flex items-center bg-surface border border-border rounded-lg px-3 h-[38px]">
-            <Filter className="h-4 w-4 text-txt-muted mr-2" />
-            <select 
-              className={`bg-transparent text-small font-medium focus:outline-none cursor-pointer ${!selectedSiteId ? 'text-txt-muted' : 'text-txt'}`}
-              value={selectedSiteId}
-              onChange={(e) => setSelectedSiteId(e.target.value)}
-            >
-              <option value="" disabled className="bg-surface text-txt-muted">Select Site ▾</option>
-              {sitesList.map(s => (
-                <option key={s.id} value={s.id} className="bg-surface text-txt">{s.name}</option>
-              ))}
-            </select>
-          </div>
+          {isAdmin && (
+            <div className="flex items-center bg-surface border border-border rounded-lg px-3 h-[38px]">
+              <Filter className="h-4 w-4 text-txt-muted mr-2" />
+              <select 
+                className={`bg-transparent text-small font-medium focus:outline-none cursor-pointer ${!selectedSiteId ? 'text-txt-muted' : 'text-txt'}`}
+                value={selectedSiteId}
+                onChange={(e) => setSelectedSiteId(e.target.value)}
+              >
+                <option value="" disabled className="bg-surface text-txt-muted">Select Site ▾</option>
+                {sitesList.map(s => (
+                  <option key={s.id} value={s.id} className="bg-surface text-txt">{s.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Status Filter */}
           <div className="flex items-center bg-surface border border-border rounded-lg px-3 h-[38px]">
@@ -142,7 +154,7 @@ const Diagnostics = () => {
         </div>
       </div>
 
-      {!selectedSiteId ? (
+      {!selectedSiteId && isAdmin ? (
         <div className="card flex-1 flex flex-col items-center justify-center text-center p-8">
           <Filter className="h-8 w-8 text-txt-muted opacity-30 mb-2" />
           <h3 className="text-body font-semibold text-txt mb-1">Select a Site</h3>
