@@ -57,26 +57,36 @@ const Performance = () => {
   useEffect(() => {
     if (!selectedSiteId) return;
     
-    const fetchSiteContext = async () => {
+    let isMounted = true;
+    const fetchSiteContext = async (silent = false) => {
       try {
-        setLoading(true);
-        setSelectedPanelId('ALL');
+        if (!silent) setLoading(true);
         const dash = await getDashboard(selectedSiteId);
-        setDashboardData(dash);
+        if (isMounted) setDashboardData(dash);
       } catch (err) {
-        setError('Failed to load site data.');
+        if (isMounted && !silent) setError('Failed to load site data.');
       } finally {
-        setLoading(false);
+        if (isMounted && !silent) setLoading(false);
       }
     };
-    fetchSiteContext();
+    fetchSiteContext(false);
+
+    const interval = setInterval(() => {
+      fetchSiteContext(true);
+    }, 5000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, [selectedSiteId]);
 
   useEffect(() => {
-    if (!dashboardData || !dashboardData.panels) return;
+    if (!selectedSiteId || !dashboardData?.panels) return;
     
-    const fetchHistory = async () => {
-      setHistoryLoading(true);
+    let isMounted = true;
+    const fetchHistory = async (isInitial = false) => {
+      if (isInitial) setHistoryLoading(true);
       setPanelDiagnostic(null);
       try {
         const to = new Date();
@@ -92,42 +102,64 @@ const Performance = () => {
           const promises = dashboardData.panels.map(p => getPanelPerformanceHistory(p.id, fromIso, toIso));
           const results = await Promise.allSettled(promises);
           
+          // Aggregate by minute across panels: sum each panel's instantaneous power once per minute
           const timeMap = {};
-          results.forEach(res => {
+          results.forEach((res, idx) => {
             if (res.status === 'fulfilled' && res.value) {
+              const panelId = dashboardData.panels[idx]?.id || idx;
               res.value.forEach(record => {
                 const dt = new Date(record.timestamp);
                 dt.setSeconds(0, 0);
                 const k = dt.toISOString();
                 if (!timeMap[k]) {
-                  timeMap[k] = {
-                    timestamp: k,
-                    actual_power_w: 0,
-                    expected_power_w: 0,
-                    count: 0
-                  };
+                  timeMap[k] = {};
                 }
-                timeMap[k].actual_power_w += (record.actual_power_w || 0);
-                timeMap[k].expected_power_w += (record.expected_power_w || 0);
-                timeMap[k].count += 1;
+                // Store the reading for this panel in this minute
+                timeMap[k][panelId] = {
+                  actual_power_w: record.actual_power_w || 0,
+                  expected_power_w: record.expected_power_w || 0
+                };
               });
             }
           });
           
-          const aggregated = Object.values(timeMap).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-          setHistoryData(aggregated);
+          const aggregated = Object.entries(timeMap).map(([k, panelMap]) => {
+            let actualSum = 0;
+            let expectedSum = 0;
+            Object.values(panelMap).forEach(pData => {
+              actualSum += pData.actual_power_w;
+              expectedSum += pData.expected_power_w;
+            });
+            return {
+              timestamp: k,
+              actual_power_w: Number(actualSum.toFixed(2)),
+              expected_power_w: Number(expectedSum.toFixed(2))
+            };
+          }).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+          if (isMounted) setHistoryData(aggregated);
         } else {
           const hist = await getPanelPerformanceHistory(selectedPanelId, fromIso, toIso);
-          setHistoryData(hist || []);
+          if (isMounted) setHistoryData(hist || []);
         }
       } catch (err) {
         console.error("Failed history fetch", err);
       } finally {
-        setHistoryLoading(false);
+        if (isMounted && isInitial) setHistoryLoading(false);
       }
     };
-    fetchHistory();
-  }, [selectedSiteId, selectedPanelId, timeRange, dashboardData]);
+
+    fetchHistory(true);
+
+    const historyInterval = setInterval(() => {
+      fetchHistory(false);
+    }, 5000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(historyInterval);
+    };
+  }, [selectedSiteId, selectedPanelId, timeRange, dashboardData?.panels?.map(p => p.id).join(',')]);
 
   let currentActual = 0;
   let currentExpected = 0;
@@ -213,6 +245,14 @@ const Performance = () => {
                 <option value="7d" className="bg-surface text-txt">Last 7 Days</option>
                 <option value="30d" className="bg-surface text-txt">Last 30 Days</option>
               </select>
+            </div>
+          )}
+
+          {/* Live Stream Indicator */}
+          {selectedSiteId && (
+            <div className="flex items-center gap-1.5 px-3 h-[38px] rounded-lg text-caption font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              LIVE
             </div>
           )}
         </div>

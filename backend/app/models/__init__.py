@@ -9,3 +9,4 @@ from .expected_power import ExpectedPower
 from .performance import PanelPerformance
 from .diagnostics import DiagnosticRecord, Alert
 from .device_command import DeviceCommand
+from .rbac import Role, Permission, RolePermission, UserSite, AuditLog

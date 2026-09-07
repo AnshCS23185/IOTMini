@@ -10,7 +10,7 @@ class IoTDeviceBase(BaseModel):
     site_id: int
 
 class IoTDeviceCreate(IoTDeviceBase):
-    pass
+    device_token: Optional[str] = None
 
 class IoTDeviceUpdate(BaseModel):
     device_uid: Optional[str] = None
@@ -18,6 +18,7 @@ class IoTDeviceUpdate(BaseModel):
     firmware_version: Optional[str] = None
     status: Optional[str] = None
     site_id: Optional[int] = None
+    device_token: Optional[str] = None
 
 class IoTDeviceResponse(IoTDeviceBase):
     id: int
@@ -27,3 +28,6 @@ class IoTDeviceResponse(IoTDeviceBase):
 
     class Config:
         from_attributes = True
+
+class IoTDeviceCreateResponse(IoTDeviceResponse):
+    device_token: Optional[str] = None

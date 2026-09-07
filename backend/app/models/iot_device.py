@@ -12,6 +12,7 @@ class IoTDevice(Base):
     device_type = Column(String, default="PICO_W")
     firmware_version = Column(String)
     status = Column(String, default="ACTIVE")
+    device_token = Column(String, nullable=True, index=True)
     last_seen = Column(DateTime(timezone=True))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

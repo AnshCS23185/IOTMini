@@ -16,6 +16,7 @@ class DeviceCommand(Base):
     
     requested_at = Column(DateTime(timezone=True), default=func.now())
     acknowledged_at = Column(DateTime(timezone=True), nullable=True)
+    error_message = Column(String, nullable=True)
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

@@ -20,7 +20,6 @@ class DiagnosticResponse(BaseModel):
     timestamp: datetime
 
     class Config:
-        orm_mode = True
         from_attributes = True
 
 class AlertResponse(BaseModel):
@@ -46,5 +45,4 @@ class AlertResponse(BaseModel):
     updated_at: Optional[datetime]
 
     class Config:
-        orm_mode = True
         from_attributes = True

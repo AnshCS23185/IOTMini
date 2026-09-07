@@ -23,9 +23,9 @@ const Dashboard = () => {
   const [sites, setSites] = useState([]);
   const [siteDataMap, setSiteDataMap] = useState({});
 
-  const fetchPlatformData = async () => {
+  const fetchPlatformData = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError(null);
       
       const [orgs, fetchedSites] = await Promise.all([
@@ -52,14 +52,18 @@ const Dashboard = () => {
       await Promise.all(promises);
       setSiteDataMap(dataMap);
     } catch (err) {
-      setError('Unable to load platform dashboard data.');
+      if (!silent) setError('Unable to load platform dashboard data.');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchPlatformData();
+    fetchPlatformData(false);
+    const timer = setInterval(() => {
+      fetchPlatformData(true);
+    }, 5000);
+    return () => clearInterval(timer);
   }, []);
 
   const totalClients = organizations.length;
