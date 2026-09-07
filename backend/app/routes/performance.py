@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 from app.database import get_db
@@ -30,7 +30,7 @@ async def get_expected_power(panel_id: int, db: Session = Depends(get_db), curre
     
     # Check for recent cached expected power
     # PVGIS DRcalc profile is hourly, so cache for 30 minutes to stay fresh
-    cache_start = datetime.utcnow() - timedelta(minutes=30)
+    cache_start = datetime.now(timezone.utc) - timedelta(minutes=30)
     cached_expected = db.query(ExpectedPower).filter(
         ExpectedPower.panel_id == panel_id,
         ExpectedPower.source == "PVGIS_DRcalc",
@@ -49,7 +49,7 @@ async def get_expected_power(panel_id: int, db: Session = Depends(get_db), curre
         panel_id=panel_id,
         expected_power_w=expected_power_w,
         source="PVGIS_DRcalc",
-        timestamp=datetime.utcnow()
+        timestamp=datetime.now(timezone.utc)
     )
     db.add(new_expected)
     db.commit()
@@ -63,8 +63,8 @@ async def get_panel_performance(panel_id: int, db: Session = Depends(get_db), cu
         raise HTTPException(status_code=404, detail="Panel not found")
     check_panel_access(current_user, panel, db)
     
-    # 1. Get Actual Power (Latest Reading)
-    latest_reading = db.query(SensorReading).filter(SensorReading.panel_id == panel_id).order_by(desc(SensorReading.timestamp)).first()
+    # 1. Get Actual Power (Latest Reading by ID)
+    latest_reading = db.query(SensorReading).filter(SensorReading.panel_id == panel_id).order_by(desc(SensorReading.id)).first()
     actual_power = latest_reading.power if latest_reading else None
     
     # 2. Get Expected Power
@@ -80,7 +80,7 @@ async def get_panel_performance(panel_id: int, db: Session = Depends(get_db), cu
         expected_power_w=expected_power,
         performance_percentage=percentage,
         status=status,
-        timestamp=datetime.utcnow()
+        timestamp=datetime.now(timezone.utc)
     )
     db.add(perf)
     db.commit()
@@ -101,7 +101,7 @@ async def get_site_performance(site_id: int, db: Session = Depends(get_db), curr
     
     for p in panels:
         # Latest reading
-        reading = db.query(SensorReading).filter(SensorReading.panel_id == p.id).order_by(desc(SensorReading.timestamp)).first()
+        reading = db.query(SensorReading).filter(SensorReading.panel_id == p.id).order_by(desc(SensorReading.id)).first()
         actual = reading.power if reading else None
         
         # Latest expected
@@ -135,13 +135,43 @@ def get_performance_history(
         raise HTTPException(status_code=404, detail="Panel not found")
     check_panel_access(current_user, panel, db)
     
-    query = db.query(PanelPerformance).filter(PanelPerformance.panel_id == panel_id)
+    query = db.query(PanelPerformance).filter(
+        PanelPerformance.panel_id == panel_id,
+        PanelPerformance.actual_power_w.isnot(None)
+    )
     if start_time:
         query = query.filter(PanelPerformance.timestamp >= start_time)
     if end_time:
         query = query.filter(PanelPerformance.timestamp <= end_time)
         
-    return query.order_by(desc(PanelPerformance.timestamp)).limit(limit).all()
+    records = query.order_by(desc(PanelPerformance.timestamp)).limit(limit).all()
+    
+    # Fallback to sensor_readings if panel_performance has no records
+    if not records:
+        s_query = db.query(SensorReading).filter(SensorReading.panel_id == panel_id)
+        if start_time:
+            s_query = s_query.filter(SensorReading.timestamp >= start_time)
+        if end_time:
+            s_query = s_query.filter(SensorReading.timestamp <= end_time)
+        readings = s_query.order_by(desc(SensorReading.timestamp)).limit(limit).all()
+        if readings:
+            exp_val = 0.5
+            cached_exp = db.query(ExpectedPower).filter(ExpectedPower.panel_id == panel_id).order_by(desc(ExpectedPower.timestamp)).first()
+            if cached_exp and cached_exp.expected_power_w > 0:
+                exp_val = cached_exp.expected_power_w
+            records = []
+            for r in readings:
+                pct, stat = PerformanceService.calculate_performance(r.power, exp_val)
+                records.append(PanelPerformance(
+                    id=r.id,
+                    panel_id=panel_id,
+                    actual_power_w=r.power,
+                    expected_power_w=exp_val,
+                    performance_percentage=pct,
+                    status=stat,
+                    timestamp=r.timestamp
+                ))
+    return records
 
 @router.get("/sites/{site_id}/dashboard", response_model=DashboardResponse)
 async def get_dashboard(site_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_permission("DASHBOARD_VIEW"))):

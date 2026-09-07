@@ -8,23 +8,33 @@ export const OverviewTab = ({ site, org }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
+    let isMounted = true;
+    const fetchData = async (silent = false) => {
       try {
-        setLoading(true);
+        if (!silent) setLoading(true);
         const [dash, activeAlerts] = await Promise.all([
           getDashboard(site.id),
           getAlerts(site.id)
         ]);
-        setDashboardData(dash);
-        setAlerts(activeAlerts);
+        if (isMounted) {
+          setDashboardData(dash);
+          setAlerts(activeAlerts);
+        }
       } catch (err) {
         console.error("Failed to load overview data:", err);
       } finally {
-        setLoading(false);
+        if (isMounted && !silent) setLoading(false);
       }
     };
-    if (site?.id) fetchData();
-  }, [site]);
+    if (site?.id) {
+      fetchData(false);
+      const timer = setInterval(() => fetchData(true), 5000);
+      return () => {
+        isMounted = false;
+        clearInterval(timer);
+      };
+    }
+  }, [site?.id]);
 
   if (loading) {
     return (

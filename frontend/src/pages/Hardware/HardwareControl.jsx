@@ -116,6 +116,16 @@ const HardwareControl = () => {
     }
   };
 
+  const refreshStatus = async (devUid) => {
+    if (!devUid) return;
+    try {
+      const stat = await getDeviceStatus(devUid);
+      setDeviceStatus(stat);
+    } catch (e) {
+      setDeviceStatus({ is_online: false, last_seen: null });
+    }
+  };
+
   const refreshHistory = async (pId) => {
     try {
       const history = await getPanelCommands(pId);
@@ -128,6 +138,18 @@ const HardwareControl = () => {
   useEffect(() => {
     loadPanelContext(selectedPanelId);
   }, [selectedPanelId]);
+
+  // Live polling every 5s to keep device status & command history up-to-date
+  useEffect(() => {
+    if (!selectedPanelId || !deviceContext?.device_uid) return;
+
+    const interval = setInterval(() => {
+      refreshStatus(deviceContext.device_uid);
+      refreshHistory(selectedPanelId);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [selectedPanelId, deviceContext?.device_uid]);
 
   const handleCommandRequest = (command) => {
     setSubmitError(null);
@@ -359,8 +381,11 @@ const HardwareControl = () => {
              </div>
              {deviceContext && (
                <button 
-                 onClick={() => refreshHistory(selectedPanelId)}
-                 className="text-caption font-bold uppercase text-txt-muted hover:text-txt transition-colors"
+                 onClick={() => {
+                   refreshStatus(deviceContext.device_uid);
+                   refreshHistory(selectedPanelId);
+                 }}
+                 className="text-caption font-bold uppercase text-txt-muted hover:text-txt transition-colors cursor-pointer"
                >
                  Refresh
                </button>

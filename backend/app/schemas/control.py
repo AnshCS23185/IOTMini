@@ -13,14 +13,30 @@ class DeviceCommandResponse(BaseModel):
     command: str
     status: str
     requested_by: int
-    reason: Optional[str]
+    reason: Optional[str] = None
     requested_at: datetime
-    acknowledged_at: Optional[datetime]
+    acknowledged_at: Optional[datetime] = None
+    error_message: Optional[str] = None
     created_at: datetime
-    updated_at: Optional[datetime]
+    updated_at: Optional[datetime] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
+
+class CommandAckRequest(BaseModel):
+    status: str = Field(..., description="Target status: ACKNOWLEDGED or FAILED")
+    error_message: Optional[str] = Field(None, description="Optional error description when status is FAILED")
+
+class CommandAckResponse(BaseModel):
+    id: int
+    status: str
+    acknowledged_at: Optional[datetime] = None
+    error_message: Optional[str] = None
+    device_id: Optional[int] = None
+    panel_id: Optional[int] = None
+    command: Optional[str] = None
+
+    class Config:
         from_attributes = True
 
 class DeviceStatusResponse(BaseModel):
