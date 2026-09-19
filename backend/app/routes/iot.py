@@ -25,6 +25,16 @@ def register_device(device_in: IoTDeviceCreate, db: Session = Depends(get_db), c
         import secrets
         device_data["device_token"] = secrets.token_urlsafe(32)
 
+    # Automatically set to UNASSIGNED if no site is provided
+    if not device_data.get("site_id"):
+        device_data["status"] = "UNASSIGNED"
+    else:
+        # If a site is provided, we still set it to UNASSIGNED by default
+        # to enforce that admin must explicitly assign it later.
+        # But for backward compatibility if needed, we allow it.
+        # Let's strictly set to UNASSIGNED if no site, otherwise ACTIVE.
+        device_data["status"] = "ACTIVE" if device_data.get("site_id") else "UNASSIGNED"
+
     db_device = IoTDevice(**device_data)
     db.add(db_device)
     db.commit()
@@ -35,36 +45,36 @@ from app.models.performance import PanelPerformance
 from app.models.expected_power import ExpectedPower
 from app.services.performance_service import PerformanceService
 
+from app.core.dependencies import get_authenticated_device
+from app.models.device_panel_mapping import DevicePanelMapping
+
 @router.post("/iot/readings", response_model=SensorReadingResponse)
-def submit_reading(reading_in: SensorReadingCreate, db: Session = Depends(get_db)):
-    # Validate device exists and is active
-    device = db.query(IoTDevice).filter(IoTDevice.device_uid == reading_in.device_id).first()
-    if not device or device.status != "ACTIVE":
-        raise HTTPException(status_code=403, detail="Invalid or inactive device")
+def submit_reading(reading_in: SensorReadingCreate, db: Session = Depends(get_db), device: IoTDevice = Depends(get_authenticated_device)):
+    # Verify the device is active and assigned to a site
+    if not device or device.status != "ACTIVE" or not device.site_id:
+        raise HTTPException(status_code=403, detail="Device is not assigned to a site or inactive")
     
-    # Resolve panel on device's site:
-    # 1. Direct match by panel ID on this site
-    panel = db.query(Panel).filter(Panel.id == reading_in.panel_id, Panel.site_id == device.site_id).first()
+    # Negative validation is already enforced by Pydantic schema (ge=0 on voltage, current, power)
     
-    # 2. 1-based channel mapping (e.g. channel 1 -> 1st panel, channel 2 -> 2nd panel of the site)
-    if not panel:
-        site_panels = db.query(Panel).filter(Panel.site_id == device.site_id).order_by(Panel.id.asc()).all()
-        if 1 <= reading_in.panel_id <= len(site_panels):
-            panel = site_panels[reading_in.panel_id - 1]
-            
-    # 3. Fallback to direct ID query
-    if not panel:
-        panel = db.query(Panel).filter(Panel.id == reading_in.panel_id).first()
-        if not panel:
-            raise HTTPException(status_code=400, detail="Panel not found")
-        if panel.site_id != device.site_id:
-            raise HTTPException(status_code=403, detail="Device and panel site mismatch")
+    # Look up the actual database panel_id based on device_id and channel_number
+    mapping = db.query(DevicePanelMapping).filter(
+        DevicePanelMapping.device_id == device.id,
+        DevicePanelMapping.channel_number == reading_in.channel_number,
+        DevicePanelMapping.is_active == True
+    ).first()
+    
+    if not mapping:
+        raise HTTPException(status_code=403, detail="Channel not mapped")
         
+    panel = db.query(Panel).filter(Panel.id == mapping.panel_id).first()
+    if not panel or panel.site_id != device.site_id:
+        raise HTTPException(status_code=403, detail="Device and panel site mismatch")
+
     # Derive/Validate power
     calculated_power = reading_in.voltage * reading_in.current
     actual_power = reading_in.power if abs(calculated_power - reading_in.power) < 1.0 else calculated_power
 
-    # Fallback to server UTC now if hardware RTC is unsynchronized (e.g. 2021 default RTC)
+    # Fallback to server UTC now if hardware RTC is unsynchronized
     now_utc = datetime.now(timezone.utc)
     reading_ts = reading_in.timestamp
     if not reading_ts or reading_ts.year < 2024 or reading_ts.year > 2030:
@@ -110,10 +120,8 @@ def submit_reading(reading_in: SensorReadingCreate, db: Session = Depends(get_db
     return db_reading
 
 @router.post("/iot/heartbeat")
-def device_heartbeat(device_uid: str, db: Session = Depends(get_db)):
-    device = db.query(IoTDevice).filter(IoTDevice.device_uid == device_uid).first()
-    if not device:
-        raise HTTPException(status_code=404, detail="Device not found")
+def device_heartbeat(db: Session = Depends(get_db), device: IoTDevice = Depends(get_authenticated_device)):
+    # Device is already authenticated by the dependency
     device.last_seen = datetime.now(timezone.utc)
     db.commit()
     return {"message": "Heartbeat received"}

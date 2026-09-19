@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 
@@ -15,15 +15,14 @@ class SensorReadingBase(BaseModel):
 
 class SensorReadingCreate(BaseModel):
     # This is what the Pico W sends
-    device_id: str # The Pico W will likely send its device_uid or ID, we map it. 
-    # Wait, the prompt shows device_id as string "PICO-001".
-    panel_id: int
-    voltage: float
-    current: float
-    power: float
+    device_id: Optional[str] = None
+    channel_number: int
+    voltage: float = Field(..., ge=0)
+    current: float = Field(..., ge=0)
+    power: float = Field(..., ge=0)
     temperature: float
     humidity: float
-    light_intensity: float
+    light_intensity: float = Field(..., ge=0)
     timestamp: datetime
 
 class SensorReadingResponse(SensorReadingBase):

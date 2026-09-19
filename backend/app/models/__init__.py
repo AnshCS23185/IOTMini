@@ -3,6 +3,7 @@ from .user import User
 from .site import Site
 from .panel import Panel
 from .iot_device import IoTDevice
+from .device_panel_mapping import DevicePanelMapping
 from .sensor_reading import SensorReading
 from .weather import WeatherReading
 from .expected_power import ExpectedPower

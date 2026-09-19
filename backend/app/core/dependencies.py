@@ -56,17 +56,11 @@ def get_device_token_from_header(
     )
 
 def get_authenticated_device(
-    device_uid: str,
     token: str = Depends(get_device_token_from_header),
     db: Session = Depends(get_db)
 ) -> IoTDevice:
-    device = db.query(IoTDevice).filter(IoTDevice.device_uid == device_uid).first()
+    device = db.query(IoTDevice).filter(IoTDevice.device_token == token).first()
     if not device:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Device '{device_uid}' not found"
-        )
-    if not device.device_token or device.device_token != token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid device credentials",
@@ -75,7 +69,7 @@ def get_authenticated_device(
     if device.status != "ACTIVE":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Device '{device_uid}' is not active"
+            detail="Device is not active"
         )
     return device
 
