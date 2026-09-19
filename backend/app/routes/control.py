@@ -49,7 +49,9 @@ def get_device_status(device_uid: str, db: Session = Depends(get_db), current_us
         "device_status": device.status
     }
 
-@router.get("/iot/devices/{device_uid}/commands", response_model=List[DeviceCommandResponse])
+from app.models.device_panel_mapping import DevicePanelMapping
+
+@router.get("/iot/devices/{device_uid}/commands")
 def poll_device_commands(
     device_uid: str,
     status: Optional[str] = Query("PENDING", description="Filter by status (e.g. PENDING)"),
@@ -60,23 +62,40 @@ def poll_device_commands(
     if status:
         query = query.filter(DeviceCommand.status == status)
         
-    # Safety: In the current demo, Relay 1 (GP14) is never controlled.
-    # Exclude any commands for Panel 1 if they exist.
-    panel_1 = db.query(Panel).filter(
-        Panel.site_id == device.site_id,
-        (Panel.name.ilike("%panel 1%") | Panel.name.ilike("p01") | Panel.name.ilike("p1") | Panel.name.ilike("%solar 1%"))
-    ).first()
-    if not panel_1:
-        panel_1 = db.query(Panel).filter(Panel.site_id == device.site_id).order_by(Panel.id.asc()).first()
-    if panel_1:
-        query = query.filter(DeviceCommand.panel_id != panel_1.id)
-        
     commands = query.order_by(DeviceCommand.created_at.asc()).all()
+    
+    # Map the database panel_id to the physical channel_number for the hardware
+    mapped_commands = []
+    for cmd in commands:
+        mapping = db.query(DevicePanelMapping).filter(
+            DevicePanelMapping.device_id == device.id,
+            DevicePanelMapping.panel_id == cmd.panel_id,
+            DevicePanelMapping.is_active == True
+        ).first()
+        
+        if not mapping:
+            continue
+            
+        # Safety lock: CH1 (Panel 1) is never remotely controllable. Exclude it.
+        if mapping.channel_number == 1:
+            continue
+            
+        cmd_dict = {
+            "id": cmd.id,
+            "device_id": cmd.device_id,
+            "panel_id": mapping.channel_number,  # Send channel_number as panel_id to firmware
+            "command": cmd.command,
+            "status": cmd.status,
+            "reason": cmd.reason,
+            "requested_at": cmd.requested_at,
+            "error_message": cmd.error_message
+        }
+        mapped_commands.append(cmd_dict)
     
     device.last_seen = datetime.now(timezone.utc)
     db.commit()
     
-    return commands
+    return mapped_commands
 
 @router.post("/iot/devices/{device_uid}/commands/{command_id}/ack", response_model=CommandAckResponse)
 def acknowledge_device_command(
@@ -140,24 +159,24 @@ def send_panel_command(panel_id: int, command_in: DeviceCommandCreate, db: Sessi
     if command_in.command not in ["RELAY_ON", "RELAY_OFF"]:
         raise HTTPException(status_code=400, detail="Invalid command. Supported commands are RELAY_ON, RELAY_OFF.")
         
-    # Safety lock: In the physical demo, Relay 1 (Panel 1) is hardwired through NC
-    # and must never be remotely switched. Remote control is strictly reserved for Relay 2 (Panel 2 on GP15).
-    is_panel_1 = ("panel 1" in panel.name.lower()) or (panel.name.lower() in ["p01", "panel-1", "p1"])
-    if not is_panel_1:
-        site_panels = db.query(Panel).filter(Panel.site_id == panel.site_id).order_by(Panel.id.asc()).all()
-        if len(site_panels) >= 2 and site_panels[0].id == panel.id:
-            is_panel_1 = True
-
-    if is_panel_1:
-        raise HTTPException(
-            status_code=400,
-            detail="Safety lock: Relay 1 (Panel 1) is hardwired through NC and cannot be remotely controlled. Only Panel 2 (Relay 2) supports remote control."
-        )
-
     # Find the device linked to this panel's site
     device = db.query(IoTDevice).filter(IoTDevice.site_id == panel.site_id, IoTDevice.status == "ACTIVE").order_by(IoTDevice.id.asc()).first()
     if not device:
         raise HTTPException(status_code=404, detail="No active IoT device associated with this panel's site")
+
+    # Safety lock: In the physical demo, Relay 1 (CH1) is hardwired through NC
+    # and must never be remotely switched. Remote control is strictly reserved for Relay 2 (CH2 on GP15).
+    mapping = db.query(DevicePanelMapping).filter(
+        DevicePanelMapping.device_id == device.id,
+        DevicePanelMapping.panel_id == panel.id,
+        DevicePanelMapping.is_active == True
+    ).first()
+    
+    if mapping and mapping.channel_number == 1:
+        raise HTTPException(
+            status_code=400,
+            detail="Safety lock: Relay 1 (CH1) is hardwired through NC and cannot be remotely controlled. Only CH2 (Relay 2) supports remote control."
+        )
         
     return HardwareControlService.send_command(
         db=db,

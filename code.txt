@@ -1,0 +1,1937 @@
+from machine import Pin, ADC, I2C
+import dht
+import network
+import time
+import urequests
+import ntptime
+
+
+# ============================================================
+# PANELIQ - RASPBERRY PI PICO W IoT FIRMWARE
+#
+# Relay 1 -> GP14 -> PERMANENTLY OFF / NC PATH ACTIVE
+# Relay 2 -> GP15 -> REMOTELY CONTROLLED FROM PANELIQ
+#
+# TELEMETRY:
+#   Pico W -> FastAPI -> PostgreSQL
+#
+# CONTROL:
+#   PanelIQ Frontend
+#        ↓
+#   FastAPI creates PENDING command
+#        ↓
+#   Pico polls command
+#        ↓
+#   Relay 2 changes state
+#        ↓
+#   Pico acknowledges command
+#
+# TIME:
+#   Wi-Fi -> NTP -> Pico RTC
+#   Timestamps are sent to backend in UTC
+#
+# GOOGLE SHEETS:
+#   Completely removed
+# ============================================================
+
+
+# ============================================================
+# PIN CONFIGURATION
+# ============================================================
+
+I2C_SDA = 4
+I2C_SCL = 5
+
+DHT1_PIN = 2
+DHT2_PIN = 3
+
+LDR1_PIN = 26
+LDR2_PIN = 27
+
+RELAY1_PIN = 14
+RELAY2_PIN = 15
+
+
+# ============================================================
+# WIFI CREDENTIALS
+# ============================================================
+
+WIFI_SSID = "Redmi Note 10S"
+
+# Put your actual Wi-Fi password here
+WIFI_PASSWORD = "YOUR_WIFI_PASSWORD"
+
+
+# ============================================================
+# PANELIQ BACKEND CONFIGURATION
+# ============================================================
+
+# IP address of the computer running FastAPI
+SERVER_IP = "10.29.208.111"
+
+SERVER_PORT = 8000
+
+API_BASE_URL = (
+    "http://"
+    + SERVER_IP
+    + ":"
+    + str(SERVER_PORT)
+    + "/api/v1"
+)
+
+
+# ============================================================
+# DEVICE CONFIGURATION
+# ============================================================
+
+DEVICE_UID = "PICO-W-01"
+
+# Put your actual device token here
+DEVICE_TOKEN = "YOUR_DEVICE_TOKEN"
+
+
+# ============================================================
+# PANEL CONFIGURATION
+# ============================================================
+
+CHANNEL1 = 1
+CHANNEL2 = 2
+
+
+# ============================================================
+# TIMING CONFIGURATION
+# ============================================================
+
+# Telemetry every 10 seconds
+TELEMETRY_INTERVAL = 10
+
+# Command polling interval
+COMMAND_POLL_INTERVAL = 2
+
+# Heartbeat every 30 seconds
+HEARTBEAT_INTERVAL = 30
+
+# NTP synchronization every 6 hours
+TIME_SYNC_INTERVAL = 21600
+
+
+# ============================================================
+# I2C INITIALIZATION
+# ============================================================
+
+i2c = I2C(
+    0,
+    scl=Pin(I2C_SCL),
+    sda=Pin(I2C_SDA),
+    freq=100000
+)
+
+
+# ============================================================
+# DHT22 INITIALIZATION
+# ============================================================
+
+dht1 = dht.DHT22(
+    Pin(DHT1_PIN)
+)
+
+dht2 = dht.DHT22(
+    Pin(DHT2_PIN)
+)
+
+
+# ============================================================
+# LDR INITIALIZATION
+# ============================================================
+
+ldr1 = ADC(
+    LDR1_PIN
+)
+
+ldr2 = ADC(
+    LDR2_PIN
+)
+
+
+# ============================================================
+# RELAY INITIALIZATION
+# ============================================================
+#
+# Relay module is ACTIVE LOW.
+#
+#   0 = Relay ON / energized
+#   1 = Relay OFF / de-energized
+#
+#
+# RELAY 1:
+#
+#   GP14
+#   Hardware uses NC contact.
+#
+#   Relay 1 MUST remain OFF.
+#
+#   relay1.value(1)
+#
+#   keeps NC1 closed.
+#
+#
+# RELAY 2:
+#
+#   GP15
+#   Hardware uses NO contact.
+#
+#   relay2.value(0) -> ON
+#   relay2.value(1) -> OFF
+#
+# For bench testing:
+#
+#   Relay 2 starts ON.
+#
+# This allows Panel 2 to immediately have current
+# flowing through the test load.
+# ============================================================
+
+relay1 = Pin(
+    RELAY1_PIN,
+    Pin.OUT
+)
+
+relay2 = Pin(
+    RELAY2_PIN,
+    Pin.OUT
+)
+
+
+# ============================================================
+# CRITICAL RELAY STARTUP STATE
+# ============================================================
+
+# Relay 1:
+# ALWAYS OFF.
+# NC1 remains CLOSED.
+
+relay1.value(1)
+
+
+# Relay 2:
+# START ON FOR BENCH TESTING.
+#
+# Active LOW:
+# 0 = ON
+
+relay2.value(0)
+
+
+print()
+print("================================================")
+print("           PANELIQ RASPBERRY PI PICO W")
+print("================================================")
+
+
+print()
+print("RELAY INITIALIZATION")
+print("--------------------")
+
+print(
+    "Relay 1 : OFF - NC PATH ACTIVE"
+)
+
+print(
+    "Relay 2 : ON - BENCH TEST MODE"
+)
+
+
+# ============================================================
+# INA219 CONFIGURATION
+# ============================================================
+
+INA1 = 0x40
+INA2 = 0x41
+
+REG_CONFIG = 0x00
+REG_SHUNT = 0x01
+REG_BUS = 0x02
+REG_CURRENT = 0x04
+REG_CALIBRATION = 0x05
+
+
+# ============================================================
+# INA219 WRITE REGISTER
+# ============================================================
+
+def write_reg(
+    address,
+    register,
+    value
+):
+
+    data = bytearray(2)
+
+    data[0] = (
+        value >> 8
+    ) & 0xFF
+
+    data[1] = (
+        value
+        & 0xFF
+    )
+
+    i2c.writeto_mem(
+        address,
+        register,
+        data
+    )
+
+
+# ============================================================
+# INA219 READ REGISTER
+# ============================================================
+
+def read_reg(
+    address,
+    register
+):
+
+    data = i2c.readfrom_mem(
+        address,
+        register,
+        2
+    )
+
+    return (
+        (data[0] << 8)
+        | data[1]
+    )
+
+
+# ============================================================
+# INA219 SIGNED REGISTER
+# ============================================================
+
+def read_signed(
+    address,
+    register
+):
+
+    value = read_reg(
+        address,
+        register
+    )
+
+    if value & 0x8000:
+
+        value -= 65536
+
+    return value
+
+
+# ============================================================
+# INA219 SETUP
+# ============================================================
+
+def setup_ina219(
+    address
+):
+
+    # 32 V bus range
+    # Continuous bus + shunt measurement
+
+    write_reg(
+        address,
+        REG_CONFIG,
+        0x399F
+    )
+
+
+    # Calibration for approximately
+    # 0.1 ohm shunt
+
+    write_reg(
+        address,
+        REG_CALIBRATION,
+        4096
+    )
+
+
+# ============================================================
+# INA219 READ
+# ============================================================
+
+def read_ina219(
+    address
+):
+
+    # --------------------------------------------------------
+    # BUS VOLTAGE
+    # --------------------------------------------------------
+
+    raw_bus = read_reg(
+        address,
+        REG_BUS
+    )
+
+    raw_bus >>= 3
+
+    voltage = (
+        raw_bus
+        * 0.004
+    )
+
+
+    # --------------------------------------------------------
+    # SHUNT VOLTAGE
+    # --------------------------------------------------------
+
+    raw_shunt = read_signed(
+        address,
+        REG_SHUNT
+    )
+
+    shunt_voltage = (
+        raw_shunt
+        * 0.00001
+    )
+
+
+    # --------------------------------------------------------
+    # CURRENT
+    # --------------------------------------------------------
+
+    raw_current = read_signed(
+        address,
+        REG_CURRENT
+    )
+
+    current = (
+        raw_current
+        * 0.0001
+    )
+
+
+    # --------------------------------------------------------
+    # POWER
+    # --------------------------------------------------------
+
+    power = (
+        voltage
+        * current
+    )
+
+
+    return (
+        voltage,
+        current,
+        power
+    )
+
+
+# ============================================================
+# WIFI
+# ============================================================
+
+wlan = network.WLAN(
+    network.STA_IF
+)
+
+
+def connect_wifi():
+
+    global wlan
+
+    print()
+    print("Connecting to Wi-Fi...")
+
+
+    try:
+
+        wlan.active(True)
+
+
+        if wlan.isconnected():
+
+            print(
+                "Wi-Fi already connected"
+            )
+
+            print(
+                "IP:",
+                wlan.ifconfig()[0]
+            )
+
+            return True
+
+
+        wlan.connect(
+            WIFI_SSID,
+            WIFI_PASSWORD
+        )
+
+
+        for attempt in range(20):
+
+            if wlan.isconnected():
+
+                print()
+                print(
+                    "Wi-Fi CONNECTED"
+                )
+
+                print(
+                    "IP:",
+                    wlan.ifconfig()[0]
+                )
+
+                return True
+
+
+            print(
+                ".",
+                end=""
+            )
+
+            time.sleep(1)
+
+
+        print()
+
+        print(
+            "Wi-Fi CONNECTION FAILED"
+        )
+
+        return False
+
+
+    except Exception as e:
+
+        print()
+
+        print(
+            "Wi-Fi ERROR:",
+            e
+        )
+
+        return False
+
+
+# ============================================================
+# NTP TIME SYNCHRONIZATION
+# ============================================================
+
+def sync_time():
+
+    print()
+    print(
+        "Synchronizing time with NTP..."
+    )
+
+
+    for attempt in range(3):
+
+        try:
+
+            print(
+                "NTP attempt",
+                attempt + 1,
+                "of 3"
+            )
+
+
+            ntptime.host = (
+                "pool.ntp.org"
+            )
+
+
+            # Synchronize Pico RTC
+            # with UTC.
+
+            ntptime.settime()
+
+
+            # Read synchronized time.
+
+            t = time.gmtime()
+
+
+            print()
+            print(
+                "TIME SYNCHRONIZATION SUCCESS"
+            )
+
+
+            print(
+                "UTC:",
+                "{:04d}-{:02d}-{:02d} "
+                "{:02d}:{:02d}:{:02d}".format(
+                    t[0],
+                    t[1],
+                    t[2],
+                    t[3],
+                    t[4],
+                    t[5]
+                )
+            )
+
+
+            return True
+
+
+        except Exception as e:
+
+            print(
+                "NTP ERROR:",
+                e
+            )
+
+
+            if attempt < 2:
+
+                time.sleep(2)
+
+
+    print()
+
+    print(
+        "TIME SYNCHRONIZATION FAILED"
+    )
+
+    return False
+
+
+# ============================================================
+# HTTP HEADERS
+# ============================================================
+
+def device_headers():
+
+    return {
+        "Content-Type": "application/json",
+        "X-Device-Token": DEVICE_TOKEN
+    }
+
+
+# ============================================================
+# TIMESTAMP
+# ============================================================
+#
+# Returns UTC timestamp.
+#
+# Example:
+#
+# 2026-09-07T10:30:00Z
+#
+# Z = UTC
+# ============================================================
+
+def get_timestamp():
+
+    try:
+
+        t = time.gmtime()
+
+
+        return (
+            "{:04d}-{:02d}-{:02d}T"
+            "{:02d}:{:02d}:{:02d}Z"
+        ).format(
+            t[0],
+            t[1],
+            t[2],
+            t[3],
+            t[4],
+            t[5]
+        )
+
+
+    except Exception:
+
+        return (
+            "1970-01-01T00:00:00Z"
+        )
+
+
+# ============================================================
+# SEND PANEL TELEMETRY
+# ============================================================
+
+def send_panel_reading(
+    channel_number,
+    voltage,
+    current,
+    power,
+    temperature,
+    humidity,
+    light_intensity
+):
+
+    response = None
+
+
+    try:
+
+        url = (
+            API_BASE_URL
+            + "/iot/readings"
+        )
+
+
+        payload = {
+
+            "device_id":
+                DEVICE_UID,
+
+            "channel_number":
+                channel_number,
+
+            "voltage":
+                round(
+                    voltage,
+                    3
+                ),
+
+            "current":
+                round(
+                    current,
+                    3
+                ),
+
+            "power":
+                round(
+                    power,
+                    3
+                ),
+
+            "temperature":
+                round(
+                    temperature,
+                    2
+                ),
+
+            "humidity":
+                round(
+                    humidity,
+                    2
+                ),
+
+            "light_intensity":
+                float(
+                    light_intensity
+                ),
+
+            "timestamp":
+                get_timestamp()
+        }
+
+
+        print()
+        print(
+            "Uploading Panel",
+            panel_id,
+            "telemetry..."
+        )
+
+
+        response = urequests.post(
+            url,
+            headers=device_headers(),
+            json=payload
+        )
+
+
+        print(
+            "Panel",
+            panel_id,
+            "HTTP:",
+            response.status_code
+        )
+
+
+        if (
+            response.status_code >= 200
+            and response.status_code < 300
+        ):
+
+            print(
+                "Panel",
+                panel_id,
+                "telemetry uploaded successfully"
+            )
+
+        else:
+
+            print(
+                "Panel",
+                panel_id,
+                "telemetry upload failed:",
+                response.text
+            )
+
+
+        response.close()
+
+        response = None
+
+
+        return True
+
+
+    except Exception as e:
+
+        print()
+
+        print(
+            "TELEMETRY ERROR - PANEL",
+            panel_id,
+            ":",
+            e
+        )
+
+
+        if response is not None:
+
+            try:
+
+                response.close()
+
+            except:
+
+                pass
+
+
+        return False
+
+
+# ============================================================
+# POLL PENDING COMMANDS
+# ============================================================
+
+def poll_commands():
+
+    response = None
+
+
+    try:
+
+        url = (
+            API_BASE_URL
+            + "/iot/devices/"
+            + DEVICE_UID
+            + "/commands?status=PENDING"
+        )
+
+
+        response = urequests.get(
+            url,
+            headers=device_headers()
+        )
+
+
+        print()
+
+        print(
+            "COMMAND POLL HTTP:",
+            response.status_code
+        )
+
+
+        if response.status_code != 200:
+
+            print(
+                "COMMAND POLL FAILED:",
+                response.text
+            )
+
+
+            response.close()
+
+            response = None
+
+            return
+
+
+        commands = response.json()
+
+
+        response.close()
+
+        response = None
+
+
+        if not commands:
+
+            print(
+                "No pending commands."
+            )
+
+            return
+
+
+        print(
+            "Pending commands:",
+            len(commands)
+        )
+
+
+        for command in commands:
+
+            process_command(
+                command
+            )
+
+
+    except Exception as e:
+
+        print()
+
+        print(
+            "COMMAND POLLING ERROR:",
+            e
+        )
+
+
+        if response is not None:
+
+            try:
+
+                response.close()
+
+            except:
+
+                pass
+
+
+# ============================================================
+# PROCESS COMMAND
+# ============================================================
+
+def process_command(
+    command
+):
+
+    try:
+
+        command_id = command.get(
+            "id"
+        )
+
+        panel_id = command.get(
+            "panel_id"
+        )
+
+        command_type = command.get(
+            "command"
+        )
+
+
+        print()
+        print(
+            "------------------------------"
+        )
+
+        print(
+            "RECEIVED COMMAND"
+        )
+
+        print(
+            "------------------------------"
+        )
+
+
+        print(
+            "Command ID :",
+            command_id
+        )
+
+
+        print(
+            "Panel ID   :",
+            panel_id
+        )
+
+
+        print(
+            "Command    :",
+            command_type
+        )
+
+
+        # ====================================================
+        # HARDWARE SAFETY CHECK
+        # ====================================================
+        #
+        # ONLY CH2 CAN CONTROL RELAY 2.
+        #
+        # CH1 IS NEVER ALLOWED.
+        # ====================================================
+
+        if panel_id != CHANNEL2:
+
+            print()
+
+            print(
+                "SAFETY: Ignoring command because it is not CH2."
+            )
+
+
+            acknowledge_command(
+                command_id,
+                "FAILED",
+                "Only CH2 / Relay 2 is remotely controllable."
+            )
+
+
+            return
+
+
+        # ====================================================
+        # RELAY 2 ON
+        # ====================================================
+
+        if command_type == "RELAY_ON":
+
+            relay2.value(0)
+
+
+            print()
+
+            print(
+                "RELAY 2 : ON"
+            )
+
+
+            acknowledge_command(
+                command_id,
+                "ACKNOWLEDGED"
+            )
+
+
+            return
+
+
+        # ====================================================
+        # RELAY 2 OFF
+        # ====================================================
+
+        elif command_type == "RELAY_OFF":
+
+            relay2.value(1)
+
+
+            print()
+
+            print(
+                "RELAY 2 : OFF"
+            )
+
+
+            acknowledge_command(
+                command_id,
+                "ACKNOWLEDGED"
+            )
+
+
+            return
+
+
+        # ====================================================
+        # UNKNOWN COMMAND
+        # ====================================================
+
+        else:
+
+            print()
+
+            print(
+                "UNKNOWN COMMAND:",
+                command_type
+            )
+
+
+            acknowledge_command(
+                command_id,
+                "FAILED",
+                "Unsupported relay command."
+            )
+
+
+    except Exception as e:
+
+        print()
+
+        print(
+            "COMMAND PROCESSING ERROR:",
+            e
+        )
+
+
+        try:
+
+            if command.get("id") is not None:
+
+                acknowledge_command(
+                    command.get("id"),
+                    "FAILED",
+                    str(e)
+                )
+
+        except:
+
+            pass
+
+
+# ============================================================
+# ACKNOWLEDGE COMMAND
+# ============================================================
+
+def acknowledge_command(
+    command_id,
+    status,
+    error_message=None
+):
+
+    response = None
+
+
+    try:
+
+        url = (
+            API_BASE_URL
+            + "/iot/devices/"
+            + DEVICE_UID
+            + "/commands/"
+            + str(command_id)
+            + "/ack"
+        )
+
+
+        payload = {
+            "status": status
+        }
+
+
+        if (
+            status == "FAILED"
+            and error_message is not None
+        ):
+
+            payload[
+                "error_message"
+            ] = error_message
+
+
+        print()
+
+        print(
+            "Acknowledging command:",
+            command_id
+        )
+
+
+        response = urequests.post(
+            url,
+            headers=device_headers(),
+            json=payload
+        )
+
+
+        print(
+            "ACK HTTP:",
+            response.status_code
+        )
+
+
+        if (
+            response.status_code >= 200
+            and response.status_code < 300
+        ):
+
+            print(
+                "Command",
+                command_id,
+                "->",
+                status
+            )
+
+        else:
+
+            print(
+                "ACK FAILED:",
+                response.text
+            )
+
+
+        response.close()
+
+        response = None
+
+
+    except Exception as e:
+
+        print()
+
+        print(
+            "ACK ERROR:",
+            e
+        )
+
+
+        if response is not None:
+
+            try:
+
+                response.close()
+
+            except:
+
+                pass
+
+
+# ============================================================
+# HEARTBEAT
+# ============================================================
+
+def send_heartbeat():
+
+    response = None
+
+
+    try:
+
+        url = (
+            API_BASE_URL
+            + "/iot/heartbeat?device_uid="
+            + DEVICE_UID
+        )
+
+
+        response = urequests.post(
+            url,
+            headers=device_headers()
+        )
+
+
+        print(
+            "Heartbeat HTTP:",
+            response.status_code
+        )
+
+
+        response.close()
+
+        response = None
+
+
+    except Exception as e:
+
+        print(
+            "HEARTBEAT ERROR:",
+            e
+        )
+
+
+        if response is not None:
+
+            try:
+
+                response.close()
+
+            except:
+
+                pass
+
+
+# ============================================================
+# INITIAL I2C SCAN
+# ============================================================
+
+devices = i2c.scan()
+
+
+print()
+print(
+    "I2C DEVICES FOUND:"
+)
+
+
+if not devices:
+
+    print(
+        "NONE"
+    )
+
+else:
+
+    for device in devices:
+
+        print(
+            " ",
+            hex(device)
+        )
+
+
+# ============================================================
+# INA219 DETECTION
+# ============================================================
+
+ina1_present = (
+    INA1 in devices
+)
+
+ina2_present = (
+    INA2 in devices
+)
+
+
+if ina1_present:
+
+    print()
+
+    print(
+        "INA219 #1 FOUND at 0x40"
+    )
+
+
+    setup_ina219(
+        INA1
+    )
+
+else:
+
+    print()
+
+    print(
+        "WARNING: INA219 #1 NOT FOUND"
+    )
+
+
+if ina2_present:
+
+    print(
+        "INA219 #2 FOUND at 0x41"
+    )
+
+
+    setup_ina219(
+        INA2
+    )
+
+else:
+
+    print(
+        "WARNING: INA219 #2 NOT FOUND"
+    )
+
+
+# ============================================================
+# WIFI CONNECTION
+# ============================================================
+
+wifi_connected = connect_wifi()
+
+
+# ============================================================
+# INITIAL TIME SYNCHRONIZATION
+# ============================================================
+
+time_synchronized = False
+
+
+if wifi_connected:
+
+    time_synchronized = sync_time()
+
+
+# ============================================================
+# TIMERS
+# ============================================================
+
+last_command_poll = time.ticks_ms()
+
+last_heartbeat = time.ticks_ms()
+
+last_time_sync = time.ticks_ms()
+
+
+# ============================================================
+# MAIN LOOP
+# ============================================================
+
+while True:
+
+    print()
+
+    print(
+        "================================================"
+    )
+
+    print(
+        "              PANELIQ LIVE DATA"
+    )
+
+    print(
+        "================================================"
+    )
+
+
+    # ========================================================
+    # RELAY 1 SAFETY LOCK
+    # ========================================================
+    #
+    # NEVER remotely control Relay 1.
+    #
+    # Keep de-energized so NC1 remains closed.
+    # ========================================================
+
+    relay1.value(1)
+
+
+    print()
+
+    print(
+        "RELAY 1 : OFF - NC PATH ACTIVE"
+    )
+
+
+    # ========================================================
+    # DEFAULT SENSOR VALUES
+    # ========================================================
+
+    temperature1 = 0
+    humidity1 = 0
+
+    temperature2 = 0
+    humidity2 = 0
+
+    ldr_value1 = 0
+    ldr_value2 = 0
+
+    voltage1 = 0
+    current1 = 0
+    power1 = 0
+
+    voltage2 = 0
+    current2 = 0
+    power2 = 0
+
+
+    # ========================================================
+    # DHT22 #1
+    # ========================================================
+
+    try:
+
+        dht1.measure()
+
+        temperature1 = (
+            dht1.temperature()
+        )
+
+        humidity1 = (
+            dht1.humidity()
+        )
+
+
+        print()
+
+        print(
+            "DHT22 #1"
+        )
+
+
+        print(
+            "Temperature :",
+            temperature1,
+            "C"
+        )
+
+
+        print(
+            "Humidity    :",
+            humidity1,
+            "%"
+        )
+
+
+    except Exception as e:
+
+        print(
+            "DHT22 #1 ERROR:",
+            e
+        )
+
+
+    # ========================================================
+    # DHT22 #2
+    # ========================================================
+
+    try:
+
+        dht2.measure()
+
+        temperature2 = (
+            dht2.temperature()
+        )
+
+        humidity2 = (
+            dht2.humidity()
+        )
+
+
+        print()
+
+        print(
+            "DHT22 #2"
+        )
+
+
+        print(
+            "Temperature :",
+            temperature2,
+            "C"
+        )
+
+
+        print(
+            "Humidity    :",
+            humidity2,
+            "%"
+        )
+
+
+    except Exception as e:
+
+        print(
+            "DHT22 #2 ERROR:",
+            e
+        )
+
+
+    # ========================================================
+    # LDR #1
+    # ========================================================
+
+    try:
+
+        ldr_value1 = (
+            ldr1.read_u16()
+        )
+
+
+        print()
+
+        print(
+            "LDR #1"
+        )
+
+
+        print(
+            "ADC Value :",
+            ldr_value1
+        )
+
+
+    except Exception as e:
+
+        print(
+            "LDR #1 ERROR:",
+            e
+        )
+
+
+    # ========================================================
+    # LDR #2
+    # ========================================================
+
+    try:
+
+        ldr_value2 = (
+            ldr2.read_u16()
+        )
+
+
+        print()
+
+        print(
+            "LDR #2"
+        )
+
+
+        print(
+            "ADC Value :",
+            ldr_value2
+        )
+
+
+    except Exception as e:
+
+        print(
+            "LDR #2 ERROR:",
+            e
+        )
+
+
+    # ========================================================
+    # INA219 #1
+    # ========================================================
+
+    if ina1_present:
+
+        try:
+
+            (
+                voltage1,
+                current1,
+                power1
+            ) = read_ina219(
+                INA1
+            )
+
+
+            print()
+
+            print(
+                "SOLAR / POWER SOURCE #1"
+            )
+
+
+            print(
+                "Voltage :",
+                round(
+                    voltage1,
+                    3
+                ),
+                "V"
+            )
+
+
+            print(
+                "Current :",
+                round(
+                    current1,
+                    3
+                ),
+                "A"
+            )
+
+
+            print(
+                "Power   :",
+                round(
+                    power1,
+                    3
+                ),
+                "W"
+            )
+
+
+        except Exception as e:
+
+            print(
+                "INA219 #1 ERROR:",
+                e
+            )
+
+
+    # ========================================================
+    # INA219 #2
+    # ========================================================
+
+    if ina2_present:
+
+        try:
+
+            (
+                voltage2,
+                current2,
+                power2
+            ) = read_ina219(
+                INA2
+            )
+
+
+            print()
+
+            print(
+                "SOLAR / POWER SOURCE #2"
+            )
+
+
+            print(
+                "Voltage :",
+                round(
+                    voltage2,
+                    3
+                ),
+                "V"
+            )
+
+
+            print(
+                "Current :",
+                round(
+                    current2,
+                    3
+                ),
+                "A"
+            )
+
+
+            print(
+                "Power   :",
+                round(
+                    power2,
+                    3
+                ),
+                "W"
+            )
+
+
+        except Exception as e:
+
+            print(
+                "INA219 #2 ERROR:",
+                e
+            )
+
+
+    # ========================================================
+    # WIFI CHECK
+    # ========================================================
+
+    if not wlan.isconnected():
+
+        print()
+
+        print(
+            "Wi-Fi disconnected."
+        )
+
+
+        wifi_connected = (
+            connect_wifi()
+        )
+
+
+        # If Wi-Fi has returned,
+        # synchronize the clock.
+
+        if wifi_connected:
+
+            time_synchronized = (
+                sync_time()
+            )
+
+
+            if time_synchronized:
+
+                last_time_sync = (
+                    time.ticks_ms()
+                )
+
+
+    else:
+
+        wifi_connected = True
+
+
+    # ========================================================
+    # COMMAND POLLING
+    # ========================================================
+
+    current_time = (
+        time.ticks_ms()
+    )
+
+
+    if time.ticks_diff(
+        current_time,
+        last_command_poll
+    ) >= (
+        COMMAND_POLL_INTERVAL
+        * 1000
+    ):
+
+        last_command_poll = (
+            current_time
+        )
+
+
+        if wifi_connected:
+
+            poll_commands()
+
+
+    # ========================================================
+    # TELEMETRY UPLOAD
+    # ========================================================
+
+    if wifi_connected:
+
+        print()
+
+        print(
+            "=============================="
+        )
+
+
+        print(
+            "UPLOADING PANELIQ TELEMETRY"
+        )
+
+
+        print(
+            "=============================="
+        )
+
+
+        # ----------------------------------------------------
+        # PANEL 1
+        # ----------------------------------------------------
+
+        send_panel_reading(
+            CHANNEL1,
+            voltage1,
+            current1,
+            power1,
+            temperature1,
+            humidity1,
+            ldr_value1,
+            ldr_value1
+        )
+
+
+        # ----------------------------------------------------
+        # PANEL 2
+        # ----------------------------------------------------
+
+        send_panel_reading(
+            CHANNEL2,
+            voltage2,
+            current2,
+            power2,
+            temperature2,
+            humidity2,
+            ldr_value2
+        )
+
+
+    else:
+
+        print()
+
+        print(
+            "Skipping telemetry upload - Wi-Fi unavailable."
+        )
+
+
+    # ========================================================
+    # HEARTBEAT
+    # ========================================================
+
+    current_time = (
+        time.ticks_ms()
+    )
+
+
+    if time.ticks_diff(
+        current_time,
+        last_heartbeat
+    ) >= (
+        HEARTBEAT_INTERVAL
+        * 1000
+    ):
+
+        last_heartbeat = (
+            current_time
+        )
+
+
+        if wifi_connected:
+
+            send_heartbeat()
+
+
+    # ========================================================
+    # PERIODIC TIME SYNCHRONIZATION
+    # ========================================================
+    #
+    # Re-synchronize every 6 hours.
+    # ========================================================
+
+    current_time = (
+        time.ticks_ms()
+    )
+
+
+    if time.ticks_diff(
+        current_time,
+        last_time_sync
+    ) >= (
+        TIME_SYNC_INTERVAL
+        * 1000
+    ):
+
+        last_time_sync = (
+            current_time
+        )
+
+
+        if wifi_connected:
+
+            if sync_time():
+
+                time_synchronized = True
+
+            else:
+
+                time_synchronized = False
+
+
+    # ========================================================
+    # FINAL RELAY SAFETY CHECK
+    # ========================================================
+
+    # Relay 1 ALWAYS OFF.
+    relay1.value(1)
+
+
+    print()
+
+    print(
+        "Relay 1 : OFF - NC path active"
+    )
+
+
+    print(
+        "Relay 2 :",
+        "ON"
+        if relay2.value() == 0
+        else "OFF"
+    )
+
+
+    # ========================================================
+    # CURRENT TIMESTAMP
+    # ========================================================
+
+    print()
+
+    print(
+        "Current timestamp:",
+        get_timestamp()
+    )
+
+
+    print()
+
+    print(
+        "Next telemetry cycle in 10 seconds..."
+    )
+
+
+    # ========================================================
+    # WAIT
+    # ========================================================
+
+    time.sleep(
+        TELEMETRY_INTERVAL
+    )

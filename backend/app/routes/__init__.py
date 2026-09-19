@@ -10,6 +10,7 @@ from .performance import router as performance_router
 from .diagnostics import router as diagnostics_router
 from .control import router as control_router
 from .solar_insights import router as solar_insights_router
+from .admin_iot import router as admin_iot_router
 
 api_router = APIRouter()
 api_router.include_router(auth_router)
@@ -23,3 +24,4 @@ api_router.include_router(performance_router)
 api_router.include_router(diagnostics_router)
 api_router.include_router(control_router)
 api_router.include_router(solar_insights_router)
+api_router.include_router(admin_iot_router)

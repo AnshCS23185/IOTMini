@@ -7,7 +7,7 @@ class IoTDeviceBase(BaseModel):
     device_type: Optional[str] = "PICO_W"
     firmware_version: Optional[str] = None
     status: Optional[str] = "ACTIVE"
-    site_id: int
+    site_id: Optional[int] = None
 
 class IoTDeviceCreate(IoTDeviceBase):
     device_token: Optional[str] = None

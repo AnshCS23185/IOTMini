@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getAdminDevices } from '../../api/admin_iot';
 import { getSites } from '../../api/sites';
-import { getSitePanels, getPanelDevice } from '../../api/panels';
-import { getDeviceStatus } from '../../api/iot';
-import { Loader2, Search, Filter } from 'lucide-react';
+import { Loader2, Search, Filter, Plus } from 'lucide-react';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { Button } from '../../components/ui/Button';
+import { useAuth } from '../../context/AuthContext';
+import { RegisterDeviceModal } from './RegisterDeviceModal';
 
 const formatLastSeen = (timestamp) => {
   if (!timestamp) return 'Never';
@@ -23,6 +24,9 @@ const formatLastSeen = (timestamp) => {
 
 const Devices = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
@@ -32,8 +36,9 @@ const Devices = () => {
   const [selectedSiteId, setSelectedSiteId] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
 
-  const fetchDevices = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
       setError(null);
@@ -41,39 +46,23 @@ const Devices = () => {
       const sitesList = await getSites();
       setSites(sitesList);
 
-      let aggregated = [];
-
-      for (const site of sitesList) {
-        if (selectedSiteId !== 'ALL' && selectedSiteId !== site.id.toString()) continue;
-        
-        try {
-          const panels = await getSitePanels(site.id);
-          const devicePromises = panels.map(p => getPanelDevice(p.id).catch(() => null));
-          const devResults = await Promise.all(devicePromises);
-          
-          for (let i = 0; i < panels.length; i++) {
-            const p = panels[i];
-            const d = devResults[i];
-            
-            if (d && d.device_uid) {
-              let s = null;
-              try {
-                s = await getDeviceStatus(d.device_uid);
-              } catch (e) {
-                s = { is_online: false, device_status: d.status || 'UNKNOWN' };
-              }
-              
-              aggregated.push({ panel: p, site, device: d, status: s });
-            } else {
-              aggregated.push({ panel: p, site, device: null, status: null });
-            }
-          }
-        } catch (e) {
-          console.error(`Failed to load data for site ${site.id}`);
-        }
-      }
+      const allDevices = await getAdminDevices();
       
-      setDevicesList(aggregated);
+      const { getDeviceMappings } = await import('../../api/admin_iot');
+      // Fetch mappings for each device to know the panel count
+      const mappedDevices = await Promise.all(
+        allDevices.map(async (dev) => {
+          try {
+            const mappings = await getDeviceMappings(dev.device_uid);
+            return { ...dev, mappings: mappings };
+          } catch (e) {
+            return { ...dev, mappings: [] };
+          }
+        })
+      );
+      
+      setDevicesList(mappedDevices);
+      
     } catch (err) {
       setError('Unable to load devices');
     } finally {
@@ -82,19 +71,30 @@ const Devices = () => {
   };
 
   useEffect(() => {
-    fetchDevices();
-  }, [selectedSiteId]);
+    fetchData();
+  }, []);
 
   const filteredData = devicesList.filter(item => {
-    if (statusFilter === 'ONLINE' && !item.status?.is_online) return false;
-    if (statusFilter === 'OFFLINE' && item.status?.is_online) return false;
+    // Determine online status
+    let isOnline = false;
+    if (item.last_seen) {
+      const now = new Date();
+      const ts = new Date(item.last_seen);
+      const diffMins = Math.floor((now - ts) / 1000 / 60);
+      if (diffMins <= 5) isOnline = true;
+    }
+
+    if (statusFilter === 'ONLINE' && !isOnline) return false;
+    if (statusFilter === 'OFFLINE' && isOnline) return false;
+    
+    const site = sites.find(s => s.id === item.site_id);
+    if (selectedSiteId !== 'ALL' && item.site_id?.toString() !== selectedSiteId) return false;
     
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      const uidMatch = item.device?.device_uid?.toLowerCase().includes(q);
-      const siteMatch = item.site?.name?.toLowerCase().includes(q);
-      const panelMatch = item.panel?.name?.toLowerCase().includes(q);
-      if (!uidMatch && !siteMatch && !panelMatch) return false;
+      const uidMatch = item.device_uid?.toLowerCase().includes(q);
+      const siteMatch = site?.name?.toLowerCase().includes(q);
+      if (!uidMatch && !siteMatch) return false;
     }
     
     return true;
@@ -113,7 +113,7 @@ const Devices = () => {
     return (
       <div className="flex flex-col items-center justify-center h-full w-full gap-3">
         <span className="text-small text-error font-medium">{error}</span>
-        <Button variant="outline" size="small" onClick={fetchDevices}>Retry</Button>
+        <Button variant="outline" size="small" onClick={fetchData}>Retry</Button>
       </div>
     );
   }
@@ -165,6 +165,12 @@ const Devices = () => {
               <option value="OFFLINE" className="bg-surface text-txt">Offline</option>
             </select>
           </div>
+
+          {isAdmin && (
+            <Button onClick={() => setIsRegisterOpen(true)} className="h-[38px]">
+              <Plus className="h-4 w-4 mr-2" /> Register Device
+            </Button>
+          )}
         </div>
       </div>
 
@@ -180,45 +186,41 @@ const Devices = () => {
               <tr>
                 <th className="py-2 px-3">Device UID</th>
                 <th className="py-2 px-3">Site</th>
-                <th className="py-2 px-3">Panel</th>
-                <th className="py-2 px-3 text-center">Type</th>
-                <th className="py-2 px-3 text-center">Firmware</th>
                 <th className="py-2 px-3 text-center">Status</th>
+                <th className="py-2 px-3 text-center">Panels</th>
                 <th className="py-2 px-3 text-right">Last Seen</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filteredData.map((item, i) => {
-                const hasDevice = !!item.device;
-                
+              {filteredData.map((item) => {
+                let isOnline = false;
+                if (item.last_seen) {
+                  const now = new Date();
+                  const ts = new Date(item.last_seen);
+                  const diffMins = Math.floor((now - ts) / 1000 / 60);
+                  if (diffMins <= 5) isOnline = true;
+                }
+                const siteName = sites.find(s => s.id === item.site_id)?.name || '—';
+                const panelCount = item.mappings ? item.mappings.length : 0; // Note: mappings might not be eagerly loaded, but we'll adapt. The backend get_all_devices does not include mappings in response_model, so it may be missing.
+
                 return (
                   <tr 
-                    key={`${item.panel.id}-${i}`}
-                    onClick={() => {
-                      if (hasDevice) navigate(`/devices/${item.device.device_uid}?panelId=${item.panel.id}`);
-                    }}
-                    className={`table-row text-caption ${hasDevice ? 'cursor-pointer' : ''}`}
+                    key={item.id}
+                    onClick={() => navigate(`/devices/${item.device_uid}`)}
+                    className="table-row text-caption cursor-pointer"
                   >
                     <td className="table-cell font-mono font-medium text-txt">
-                      {hasDevice ? item.device.device_uid : <span className="text-txt-muted">—</span>}
+                      {item.device_uid}
                     </td>
-                    <td className="table-cell-muted">{item.site.name}</td>
-                    <td className="table-cell font-medium text-txt">P{item.panel.id.toString().padStart(2, '0')}</td>
+                    <td className="table-cell-muted">{item.status === 'UNASSIGNED' ? <span className="text-warning">Unassigned</span> : siteName}</td>
                     <td className="table-cell text-center">
-                      <span className="text-[10px] font-mono text-txt-secondary bg-surface-secondary border border-border px-1.5 py-0.5 rounded">
-                        {hasDevice ? item.device.device_type : 'N/A'}
-                      </span>
+                      <StatusBadge status={isOnline ? 'ONLINE' : 'OFFLINE'} />
                     </td>
-                    <td className="table-cell-muted text-center font-mono text-[11px]">
-                      {hasDevice ? `v${item.device.firmware_version}` : '—'}
-                    </td>
-                    <td className="table-cell text-center">
-                      {hasDevice ? (
-                        <StatusBadge status={item.status?.is_online ? 'ONLINE' : 'OFFLINE'} />
-                      ) : <span className="text-txt-muted">—</span>}
+                    <td className="table-cell-muted text-center font-mono">
+                      {item.status === 'UNASSIGNED' ? '—' : (item.mappings?.length || '?')}
                     </td>
                     <td className="table-cell-muted font-mono text-right text-[11px]">
-                      {hasDevice ? formatLastSeen(item.status?.last_seen) : '—'}
+                      {formatLastSeen(item.last_seen)}
                     </td>
                   </tr>
                 );
@@ -227,6 +229,12 @@ const Devices = () => {
           </table>
         )}
       </div>
+
+      <RegisterDeviceModal 
+        isOpen={isRegisterOpen} 
+        onClose={() => setIsRegisterOpen(false)} 
+        onSuccess={fetchData} 
+      />
     </div>
   );
 };
