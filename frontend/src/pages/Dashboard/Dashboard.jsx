@@ -96,6 +96,7 @@ const Dashboard = () => {
     
     if (dash) {
       totalPanels += (dash.total_panels || 0);
+      totalDevices += (dash.total_devices || 0);
       currentOutput += (dash.current_power_w || 0);
       expectedOutput += (dash.expected_power_w || 0);
       
@@ -139,7 +140,7 @@ const Dashboard = () => {
     }
   });
 
-  alertsList.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  alertsList.sort((a, b) => new Date(b.first_detected_at) - new Date(a.first_detected_at));
 
   const formatPower = (w) => {
     if (w >= 1000) return `${(w/1000).toFixed(1)} kW`;
@@ -325,7 +326,7 @@ const Dashboard = () => {
                     <div className="flex flex-col min-w-0 pr-2">
                       <span className="text-caption font-medium text-txt truncate">{alert.description}</span>
                       <span className="text-caption text-txt-muted truncate">
-                        {alert.siteName} • {new Date(alert.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                        {alert.siteName} • {new Date(alert.first_detected_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                       </span>
                     </div>
                     <span className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0 ${

@@ -13,6 +13,7 @@ from app.models.panel import Panel
 from app.models.sensor_reading import SensorReading
 from app.models.expected_power import ExpectedPower
 from app.models.performance import PanelPerformance
+from app.models.iot_device import IoTDevice
 from app.schemas.expected_power import ExpectedPowerResponse
 from app.schemas.performance import PanelPerformanceResponse
 from app.schemas.dashboard import DashboardResponse, PanelSummary
@@ -256,12 +257,15 @@ async def get_dashboard(site_id: int, db: Session = Depends(get_db), current_use
     except Exception:
         weather = None
 
+    total_devices = db.query(IoTDevice).filter(IoTDevice.site_id == site_id).count()
+
     return DashboardResponse(
         site_id=site_id,
         current_power_w=total_actual,
         expected_power_w=total_expected,
         performance_percentage=site_perf,
         total_panels=len(panels),
+        total_devices=total_devices,
         healthy_panels=healthy,
         attention_panels=attention,
         underperforming_panels=underperforming,
