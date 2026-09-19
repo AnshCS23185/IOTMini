@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, Float, String, DateTime, ForeignKey
 from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from app.database import Base
 
 class DiagnosticRecord(Base):
@@ -52,5 +52,5 @@ class Alert(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    panel = relationship("Panel", backref="alerts")
-    site = relationship("Site", backref="alerts")
+    panel = relationship("Panel", backref=backref("alerts", cascade="all, delete-orphan"))
+    site = relationship("Site", backref=backref("alerts", cascade="all, delete-orphan"))

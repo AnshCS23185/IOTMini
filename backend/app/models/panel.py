@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Float
 from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from app.database import Base
 
 class Panel(Base):
@@ -18,4 +18,4 @@ class Panel(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    site = relationship("Site", backref="solar_panels")
+    site = relationship("Site", backref=backref("solar_panels", cascade="all, delete-orphan"))

@@ -9,7 +9,7 @@ class OpenMeteoService:
         params = {
             "latitude": site.latitude,
             "longitude": site.longitude,
-            "current": "temperature_2m,relative_humidity_2m,cloud_cover,precipitation,apparent_temperature,wind_speed_10m,weather_code,is_day",
+            "current": "temperature_2m,relative_humidity_2m,cloud_cover,precipitation,apparent_temperature,wind_speed_10m,weather_code,is_day,shortwave_radiation",
             "daily": "weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset",
             "timezone": site.timezone or "UTC"
         }
@@ -44,7 +44,7 @@ class OpenMeteoService:
                     "wind_speed": current.get("wind_speed_10m"),
                     "cloud_cover": current.get("cloud_cover"),
                     "precipitation": current.get("precipitation"),
-                    "solar_radiation": current.get("surface_solar_radiation_down", 0.0),
+                    "solar_radiation": current.get("shortwave_radiation", 0.0),
                     "timestamp": datetime.utcnow(),
                     "forecast": forecast
                 }

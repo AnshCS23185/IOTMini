@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, Float, String, DateTime, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from app.database import Base
 
 class PanelPerformance(Base):
@@ -13,4 +13,4 @@ class PanelPerformance(Base):
     status = Column(String, nullable=False) # HEALTHY, ATTENTION, UNDERPERFORMING, NO_SOLAR, NO_DATA
     timestamp = Column(DateTime(timezone=True), nullable=False)
 
-    panel = relationship("Panel", backref="performance_records")
+    panel = relationship("Panel", backref=backref("performance_records", cascade="all, delete-orphan"))
