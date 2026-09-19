@@ -91,9 +91,18 @@ const Performance = () => {
       try {
         const to = new Date();
         const from = new Date();
-        if (timeRange === 'today') from.setHours(0,0,0,0);
-        else if (timeRange === '7d') from.setDate(to.getDate() - 7);
-        else if (timeRange === '30d') from.setDate(to.getDate() - 30);
+        if (timeRange === 'today') {
+          from.setHours(0,0,0,0);
+        } else if (timeRange === 'yesterday') {
+          from.setDate(from.getDate() - 1);
+          from.setHours(0,0,0,0);
+          to.setDate(to.getDate() - 1);
+          to.setHours(23,59,59,999);
+        } else if (timeRange === '7d') {
+          from.setDate(to.getDate() - 7);
+        } else if (timeRange === '30d') {
+          from.setDate(to.getDate() - 30);
+        }
         
         const fromIso = from.toISOString();
         const toIso = to.toISOString();
@@ -167,13 +176,83 @@ const Performance = () => {
   let activePanels = 0;
   let panelStatus = 'HEALTHY';
 
+  // Energy & Summary Calculations
+  let peakPower = 0;
+  let averagePower = 0;
+  let energyGeneratedWh = 0;
+  let expectedEnergyWh = 0;
+  
+  if (historyData.length > 0) {
+    let sumPower = 0;
+    let validCount = 0;
+    for (let i = 0; i < historyData.length; i++) {
+      const pActRaw = historyData[i].actual_power_w;
+      const pExpRaw = historyData[i].expected_power_w;
+      
+      const pAct = (pActRaw == null || pActRaw < 0) ? 0 : pActRaw;
+      const pExp = (pExpRaw == null || pExpRaw < 0) ? 0 : pExpRaw;
+      
+      if (pAct > peakPower) peakPower = pAct;
+      if (pActRaw != null) {
+        sumPower += pAct;
+        validCount++;
+      }
+      
+      if (i > 0) {
+        const dtCurrent = new Date(historyData[i].timestamp).getTime();
+        const dtPrev = new Date(historyData[i-1].timestamp).getTime();
+        
+        if (!isNaN(dtCurrent) && !isNaN(dtPrev)) {
+          const deltaHours = (dtCurrent - dtPrev) / (1000 * 3600);
+          
+          // Ignore negative intervals. Max allowable gap is 1.5 hours before we assume offline.
+          if (deltaHours > 0 && deltaHours <= 1.5) {
+            const prevActRaw = historyData[i-1].actual_power_w;
+            const prevExpRaw = historyData[i-1].expected_power_w;
+            
+            const prevAct = (prevActRaw == null || prevActRaw < 0) ? 0 : prevActRaw;
+            const prevExp = (prevExpRaw == null || prevExpRaw < 0) ? 0 : prevExpRaw;
+            
+            energyGeneratedWh += ((pAct + prevAct) / 2) * deltaHours;
+            expectedEnergyWh += ((pExp + prevExp) / 2) * deltaHours;
+          }
+        }
+      }
+    }
+    averagePower = validCount > 0 ? sumPower / validCount : 0;
+  }
+  const energyPerf = expectedEnergyWh > 0 ? (energyGeneratedWh / expectedEnergyWh) * 100 : 0;
+
+  const formatPower = (val) => {
+    if (val == null) return '—';
+    if (Math.abs(val) >= 1000) return `${(val/1000).toFixed(2)} kW`;
+    return `${val.toFixed(1)} W`;
+  };
+
+  const formatEnergy = (val) => {
+    if (val == null || val === 0) return '0 Wh';
+    if (val >= 1000) return `${(val/1000).toFixed(2)} kWh`;
+    return `${val.toFixed(1)} Wh`;
+  };
+
   if (dashboardData) {
     if (selectedPanelId === 'ALL') {
       currentActual = dashboardData.current_power_w;
       currentExpected = dashboardData.expected_power_w;
       currentPerf = dashboardData.performance_percentage;
       activePanels = dashboardData.total_panels;
-      panelStatus = dashboardData.expected_power_w === 0 ? 'NO_SOLAR' : 'HEALTHY';
+      
+      if (dashboardData.expected_power_w <= 0) {
+        panelStatus = 'NO_SOLAR';
+      } else if (dashboardData.current_power_w == null) {
+        panelStatus = 'NO_DATA';
+      } else if (currentPerf >= 85) {
+        panelStatus = 'HEALTHY';
+      } else if (currentPerf >= 60) {
+        panelStatus = 'ATTENTION';
+      } else {
+        panelStatus = 'UNDERPERFORMING';
+      }
     } else {
       const panel = dashboardData.panels.find(p => p.id === Number(selectedPanelId));
       if (panel) {
@@ -242,6 +321,7 @@ const Performance = () => {
                 onChange={(e) => setTimeRange(e.target.value)}
               >
                 <option value="today" className="bg-surface text-txt">Today</option>
+                <option value="yesterday" className="bg-surface text-txt">Yesterday</option>
                 <option value="7d" className="bg-surface text-txt">Last 7 Days</option>
                 <option value="30d" className="bg-surface text-txt">Last 30 Days</option>
               </select>
@@ -266,27 +346,33 @@ const Performance = () => {
         </div>
       ) : (
         <>
-          {/* KPI Strip */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 shrink-0">
+          {/* Enhanced KPI Strip */}
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 shrink-0">
             <div className="card p-3 flex flex-col justify-between">
-              <span className="text-caption text-txt-muted uppercase tracking-wider font-medium">Current Power</span>
+              <span className="text-caption text-txt-muted uppercase tracking-wider font-medium">Actual Power</span>
               <span className="text-stat-sm font-mono font-semibold text-txt mt-1">
-                {isNoData ? '—' : (isNighttime ? '0 W' : (currentActual >= 1000 ? `${(currentActual/1000).toFixed(2)} kW` : `${currentActual.toFixed(1)} W`))}
+                {isNoData ? '—' : (isNighttime ? '0.0 W' : formatPower(currentActual))}
               </span>
             </div>
             <div className="card p-3 flex flex-col justify-between">
               <span className="text-caption text-txt-muted uppercase tracking-wider font-medium">Expected Power</span>
               <span className="text-stat-sm font-mono font-semibold text-txt-secondary mt-1">
-                {currentExpected >= 1000 ? `${(currentExpected/1000).toFixed(2)} kW` : `${currentExpected.toFixed(1)} W`}
+                {formatPower(currentExpected)}
               </span>
             </div>
             <div className="card p-3 flex flex-col justify-between">
-              <span className="text-caption text-txt-muted uppercase tracking-wider font-medium">Performance</span>
-              <div className="flex items-center gap-2 mt-1">
-                <span className={`text-stat-sm font-mono font-semibold ${isNighttime ? 'text-txt-muted' : (currentPerf < 60 ? 'text-error' : 'text-success')}`}>
+              <span className="text-caption text-txt-muted uppercase tracking-wider font-medium">Difference</span>
+              <span className={`text-stat-sm font-mono font-semibold mt-1 ${(isNoData || isNighttime) ? 'text-txt-muted' : (currentActual - currentExpected >= 0 ? 'text-success' : 'text-error')}`}>
+                {(isNoData || isNighttime) ? '—' : `${currentActual - currentExpected > 0 ? '+' : ''}${formatPower(currentActual - currentExpected)}`}
+              </span>
+            </div>
+            <div className="card p-3 flex flex-col justify-between bg-surface-secondary border-primary/20">
+              <span className="text-caption text-txt uppercase tracking-wider font-semibold">Performance</span>
+              <div className="flex items-center justify-between mt-1">
+                <span className={`text-[20px] font-mono font-bold ${isNighttime ? 'text-txt-muted' : (currentPerf < 60 ? 'text-error' : 'text-success')}`}>
                   {(isNighttime || isNoData || currentPerf == null) ? '—' : `${currentPerf.toFixed(1)}%`}
                 </span>
-                {selectedPanelId !== 'ALL' && <StatusBadge status={isNighttime ? 'NO_SOLAR' : (isNoData ? 'NO_DATA' : panelStatus)} />}
+                <StatusBadge status={isNighttime ? 'NO_SOLAR' : (isNoData ? 'NO_DATA' : panelStatus)} />
               </div>
             </div>
             <div className="card p-3 flex flex-col justify-between">
@@ -301,13 +387,33 @@ const Performance = () => {
           <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-3">
             {/* Left Col: Chart & Log */}
             <div className="flex-1 flex flex-col min-w-0 gap-3">
-              <div className="h-56 shrink-0 relative">
+              <div className="h-64 shrink-0 relative">
                 {historyLoading && (
                   <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10 rounded-lg">
                     <div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
                   </div>
                 )}
                 <PerformanceChart data={historyData} />
+              </div>
+
+              {/* Performance Summary Strip */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 shrink-0 mt-1">
+                <div className="card p-3 flex flex-col justify-between">
+                  <span className="text-caption text-txt-muted uppercase tracking-wider font-medium">Peak Power</span>
+                  <span className="text-stat-sm font-mono font-semibold text-txt mt-1">{formatPower(peakPower)}</span>
+                </div>
+                <div className="card p-3 flex flex-col justify-between">
+                  <span className="text-caption text-txt-muted uppercase tracking-wider font-medium">Avg Power</span>
+                  <span className="text-stat-sm font-mono font-semibold text-txt mt-1">{formatPower(averagePower)}</span>
+                </div>
+                <div className="card p-3 flex flex-col justify-between">
+                  <span className="text-caption text-txt-muted uppercase tracking-wider font-medium">Energy Generated</span>
+                  <span className="text-stat-sm font-mono font-semibold text-primary mt-1">{formatEnergy(energyGeneratedWh)}</span>
+                </div>
+                <div className="card p-3 flex flex-col justify-between">
+                  <span className="text-caption text-txt-muted uppercase tracking-wider font-medium">Expected Energy</span>
+                  <span className="text-stat-sm font-mono font-semibold text-txt-secondary mt-1">{formatEnergy(expectedEnergyWh)}</span>
+                </div>
               </div>
 
               {/* Historical Log */}
@@ -361,41 +467,47 @@ const Performance = () => {
             </div>
 
             {/* Right Col: Panel Selector */}
-            <div className="w-full lg:w-72 flex flex-col gap-3 shrink-0">
+            <div className="w-full lg:w-96 flex flex-col gap-3 shrink-0">
               <div className="card p-0 flex flex-col flex-1 overflow-hidden">
                 <div className="px-3 py-2 border-b border-border bg-surface-secondary shrink-0 flex justify-between items-center">
-                  <span className="text-caption font-semibold text-txt uppercase tracking-wider">Panels ({dashboardData?.panels?.length || 0})</span>
+                  <span className="text-caption font-semibold text-txt uppercase tracking-wider">Panel Comparison ({dashboardData?.panels?.length || 0})</span>
                 </div>
                 
                 <div className="flex-1 overflow-y-auto p-1.5 divide-y divide-border">
                   <div 
                     onClick={() => setSelectedPanelId('ALL')}
-                    className={`px-2.5 py-1.5 cursor-pointer flex justify-between items-center rounded transition-colors ${selectedPanelId === 'ALL' ? 'bg-primary/10 border border-primary/20 font-medium' : 'hover:bg-surface-hover'}`}
+                    className={`px-3 py-2.5 mb-1 cursor-pointer flex justify-between items-center rounded transition-colors ${selectedPanelId === 'ALL' ? 'bg-primary/10 border border-primary/20 font-medium' : 'hover:bg-surface-hover'}`}
                   >
-                    <span className="text-caption text-txt">All Panels (Aggregate)</span>
-                    <span className="text-[10px] text-txt-muted font-mono">{activePanels} Active</span>
+                    <span className="text-small text-txt">All Panels (Aggregate)</span>
+                    <span className="text-caption text-txt-muted font-mono">{activePanels} Active</span>
                   </div>
                   
                   {dashboardData?.panels?.map(p => {
                     const isNight = p.expected_power_w === 0;
                     const noData = p.actual_power_w == null;
                     const isSelected = selectedPanelId === p.id.toString();
+                    const isUnderperforming = p.status === 'UNDERPERFORMING';
                     
                     return (
                       <div 
                         key={p.id}
                         onClick={() => setSelectedPanelId(p.id.toString())}
-                        className={`px-2.5 py-1.5 cursor-pointer rounded transition-colors flex flex-col gap-0.5 ${isSelected ? 'bg-primary/10 border border-primary/20' : 'hover:bg-surface-hover'}`}
+                        className={`px-3 py-2.5 cursor-pointer rounded transition-colors flex flex-col gap-1.5 ${isSelected ? 'bg-primary/10 border border-primary/20' : (isUnderperforming ? 'bg-error/5 hover:bg-error/10' : 'hover:bg-surface-hover')}`}
                       >
                         <div className="flex justify-between items-center">
-                          <span className={`text-caption font-medium ${isSelected ? 'text-primary' : 'text-txt'}`}>{p.name}</span>
-                          <span className="text-[10px] font-mono text-txt-muted">
-                            {(isNight || noData || p.performance_percentage == null) ? '—' : `${p.performance_percentage.toFixed(0)}%`}
+                          <span className={`text-small font-semibold ${isSelected ? 'text-primary' : (isUnderperforming ? 'text-error' : 'text-txt')}`}>
+                            {p.name}
                           </span>
+                          <StatusBadge status={isNight ? 'NO_SOLAR' : (noData ? 'NO_DATA' : p.status)} />
                         </div>
-                        <div className="flex justify-between items-center text-[10px] font-mono text-txt-muted">
-                          <span>A: {noData ? '—' : `${p.actual_power_w.toFixed(1)}W`}</span>
-                          <span>E: {`${p.expected_power_w.toFixed(1)}W`}</span>
+                        <div className="flex justify-between items-end text-caption font-mono">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-txt-muted">A: {noData ? '—' : `${p.actual_power_w.toFixed(1)} W`}</span>
+                            <span className="text-txt-muted">E: {`${p.expected_power_w.toFixed(1)} W`}</span>
+                          </div>
+                          <div className={`text-base font-bold ${isNight ? 'text-txt-muted' : (p.performance_percentage < 60 ? 'text-error' : 'text-success')}`}>
+                            {(isNight || noData || p.performance_percentage == null) ? '—' : `${p.performance_percentage.toFixed(1)}%`}
+                          </div>
                         </div>
                       </div>
                     );
