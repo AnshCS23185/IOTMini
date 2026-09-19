@@ -22,13 +22,18 @@ FAULT_CONFIRMATION_COUNT = int(os.getenv("FAULT_CONFIRMATION_COUNT", "3"))
 class DiagnosticService:
 
     @staticmethod
-    def _get_ldr_baseline(panel_id: int, db: Session) -> Optional[float]:
+    def _get_ldr_baseline(panel_id: int, db: Session, exclude_timestamp=None) -> Optional[float]:
         # Simple rolling median/average over last valid daylight readings
         # For simplicity in MVP, we take the average of the last 10 valid daylight readings where power > 0
-        readings = db.query(SensorReading).filter(
+        query = db.query(SensorReading).filter(
             SensorReading.panel_id == panel_id,
             SensorReading.power > 0
-        ).order_by(desc(SensorReading.timestamp)).limit(LDR_BASELINE_SAMPLE_SIZE).all()
+        )
+        
+        if exclude_timestamp:
+            query = query.filter(SensorReading.timestamp < exclude_timestamp)
+            
+        readings = query.order_by(desc(SensorReading.timestamp)).limit(LDR_BASELINE_SAMPLE_SIZE).all()
         
         if len(readings) < (LDR_BASELINE_SAMPLE_SIZE // 2):
             return None # Not enough data to establish a reliable baseline
@@ -97,7 +102,7 @@ class DiagnosticService:
             reason = "Panel performance is slightly degraded but not critically faulty."
         else:
             # Fault finding
-            ldr_baseline = DiagnosticService._get_ldr_baseline(panel.id, db)
+            ldr_baseline = DiagnosticService._get_ldr_baseline(panel.id, db, reading.timestamp)
             
             is_bad_weather = c_cover >= WEATHER_CLOUD_THRESHOLD or c_precip > WEATHER_PRECIP_THRESHOLD
             

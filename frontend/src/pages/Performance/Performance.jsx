@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import { getSites } from '../../api/sites';
 import { getDashboard } from '../../api/dashboard';
 import { getPanelPerformanceHistory } from '../../api/performance';
+import { getPanel, getPanelDiagnostics } from '../../api/panels';
 import PerformanceChart from './PerformanceChart';
-import { Loader2, Calendar, MapPin, Zap, Thermometer, Droplets, Cloud, CloudRain } from 'lucide-react';
+import { Loader2, Calendar, MapPin, Zap, Thermometer, Droplets, Cloud, CloudRain, ArrowLeft, Info, History, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { Button } from '../../components/ui/Button';
@@ -13,24 +14,73 @@ const Performance = () => {
   const { user } = useAuth();
   const isAdmin = user?.role?.toUpperCase() === 'ADMIN';
 
+  const location = useLocation();
+  const navigate = useNavigate();
+  const fromDiagnostics = location.state?.fromDiagnostics;
+
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedSiteId = searchParams.get('siteId') || '';
+  const panelIdParam = searchParams.get('panelId');
+
   const setSelectedSiteId = (id) => {
+    setSelectedPanelIdState('ALL');
     setSearchParams(prev => {
       if (id) prev.set('siteId', id);
       else prev.delete('siteId');
+      prev.delete('panelId');
       return prev;
     }, { replace: true });
   };
   
   const [sites, setSites] = useState([]);
   const [timeRange, setTimeRange] = useState('7d');
-  const [selectedPanelId, setSelectedPanelId] = useState('ALL');
+  const [selectedPanelIdState, setSelectedPanelIdState] = useState(panelIdParam || 'ALL');
+
+  const selectedPanelId = panelIdParam || selectedPanelIdState;
+
+  const setSelectedPanelId = (id) => {
+    setSelectedPanelIdState(id);
+    setSearchParams(prev => {
+      if (id !== 'ALL') prev.set('panelId', id);
+      else prev.delete('panelId');
+      return prev;
+    }, { replace: true });
+  };
   
   const [dashboardData, setDashboardData] = useState(null);
   const [historyData, setHistoryData] = useState([]);
-  const [panelDiagnostic, setPanelDiagnostic] = useState(null);
+  const [showLogs, setShowLogs] = useState(false);
   
+  const [panelDetails, setPanelDetails] = useState(null);
+  const [panelDiagnostics, setPanelDiagnostics] = useState(null);
+
+  useEffect(() => {
+    if (selectedPanelId === 'ALL') {
+      setPanelDetails(null);
+      setPanelDiagnostics(null);
+      return;
+    }
+
+    let isMounted = true;
+    const fetchDetails = async () => {
+      try {
+        const pId = Number(selectedPanelId);
+        const [pData, dData] = await Promise.allSettled([
+          getPanel(pId),
+          getPanelDiagnostics(pId)
+        ]);
+        if (isMounted) {
+          if (pData.status === 'fulfilled') setPanelDetails(pData.value);
+          if (dData.status === 'fulfilled') setPanelDiagnostics(dData.value);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchDetails();
+    return () => { isMounted = false; };
+  }, [selectedPanelId]);
+
   const [loading, setLoading] = useState(true);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -87,7 +137,6 @@ const Performance = () => {
     let isMounted = true;
     const fetchHistory = async (isInitial = false) => {
       if (isInitial) setHistoryLoading(true);
-      setPanelDiagnostic(null);
       try {
         const to = new Date();
         const from = new Date();
@@ -281,9 +330,19 @@ const Performance = () => {
     <div className="page-container gap-4">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center shrink-0 mb-1 gap-4">
-        <div>
-          <h1 className="text-[26px] sm:text-[28px] font-bold text-txt leading-tight tracking-tight">Performance Analytics</h1>
-          <p className="text-[13px] sm:text-[14px] text-txt-muted mt-0.5 font-normal">Continuous yield curve modeling against predicted generation.</p>
+        <div className="flex items-center gap-3">
+          {fromDiagnostics && (
+            <button 
+              onClick={() => navigate(-1)}
+              className="p-1.5 hover:bg-surface-hover rounded-lg transition-colors text-txt-muted hover:text-txt cursor-pointer"
+            >
+              <ArrowLeft className="h-5 w-5 text-txt" />
+            </button>
+          )}
+          <div>
+            <h1 className="text-[26px] sm:text-[28px] font-bold text-txt leading-tight tracking-tight">Performance Analytics</h1>
+            <p className="text-[13px] sm:text-[14px] text-txt-muted mt-0.5 font-normal">Continuous yield curve modeling against predicted generation.</p>
+          </div>
         </div>
         
         <div className="flex items-center gap-2.5">
@@ -335,6 +394,14 @@ const Performance = () => {
               LIVE
             </div>
           )}
+
+          {/* Logs Toggle */}
+          {selectedSiteId && (
+            <Button variant="outline" size="sm" onClick={() => setShowLogs(true)} className="h-[38px]">
+              <History className="h-4 w-4 mr-2" />
+              Logs
+            </Button>
+          )}
         </div>
       </div>
 
@@ -383,11 +450,67 @@ const Performance = () => {
             </div>
           </div>
 
+          {/* Panel Context row */}
+          {selectedPanelId !== 'ALL' && panelDetails && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 shrink-0 mb-1">
+              <div className="card p-3 flex flex-col gap-2">
+                <div className="flex items-center gap-2 mb-1">
+                  <Info className="h-4 w-4 text-primary" />
+                  <h3 className="text-caption font-semibold text-txt uppercase tracking-wider">Panel Configuration</h3>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-2">
+                  <div className="flex flex-col">
+                    <span className="text-[11px] text-txt-muted uppercase">Technology</span>
+                    <span className="text-small font-medium text-txt">{panelDetails.technology || 'N/A'}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[11px] text-txt-muted uppercase">Rated Power</span>
+                    <span className="text-small font-medium text-txt">{panelDetails.rated_power_w} W</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[11px] text-txt-muted uppercase">Tilt</span>
+                    <span className="text-small font-medium text-txt">{panelDetails.tilt ? `${panelDetails.tilt}°` : 'N/A'}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[11px] text-txt-muted uppercase">Azimuth</span>
+                    <span className="text-small font-medium text-txt">{panelDetails.azimuth ? `${panelDetails.azimuth}°` : 'N/A'}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="card p-3 flex flex-col gap-2">
+                <div className="flex items-center gap-2 mb-1">
+                  <Cloud className="h-4 w-4 text-info" />
+                  <h3 className="text-caption font-semibold text-txt uppercase tracking-wider">Environmental Context</h3>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-2">
+                  <div className="flex flex-col">
+                    <span className="text-[11px] text-txt-muted uppercase">Irradiance (LDR)</span>
+                    <span className="text-small font-medium text-txt">{panelDiagnostics?.light_intensity != null ? panelDiagnostics.light_intensity.toFixed(0) : 'N/A'}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[11px] text-txt-muted uppercase">Temperature</span>
+                    <span className="text-small font-medium text-txt">{panelDiagnostics?.temperature != null ? `${panelDiagnostics.temperature}°C` : 'N/A'}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[11px] text-txt-muted uppercase">Humidity</span>
+                    <span className="text-small font-medium text-txt">{panelDiagnostics?.humidity != null ? `${panelDiagnostics.humidity}%` : 'N/A'}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[11px] text-txt-muted uppercase">Cloud Cover</span>
+                    <span className="text-small font-medium text-txt">{panelDiagnostics?.cloud_cover != null ? `${panelDiagnostics.cloud_cover}%` : 'N/A'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+
           {/* Main Layout: Graph + Side Context */}
           <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-3">
-            {/* Left Col: Chart & Log */}
-            <div className="flex-1 flex flex-col min-w-0 gap-3">
-              <div className="h-64 shrink-0 relative">
+            {/* Left Col: Chart & KPIs */}
+            <div className="flex-1 flex flex-col min-w-0 min-h-0 gap-3">
+              <div className="flex-1 shrink-0 relative min-h-[250px]">
                 {historyLoading && (
                   <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10 rounded-lg">
                     <div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
@@ -413,55 +536,6 @@ const Performance = () => {
                 <div className="card p-3 flex flex-col justify-between">
                   <span className="text-caption text-txt-muted uppercase tracking-wider font-medium">Expected Energy</span>
                   <span className="text-stat-sm font-mono font-semibold text-txt-secondary mt-1">{formatEnergy(expectedEnergyWh)}</span>
-                </div>
-              </div>
-
-              {/* Historical Log */}
-              <div className="flex-1 min-h-0 card p-0 flex flex-col overflow-hidden">
-                <div className="px-3 py-2 border-b border-border bg-surface-secondary shrink-0">
-                  <span className="text-caption font-semibold text-txt uppercase tracking-wider">Historical Log</span>
-                </div>
-                <div className="flex-1 overflow-y-auto">
-                  <table className="w-full text-left whitespace-nowrap">
-                    <thead className="table-header sticky top-0 z-10">
-                      <tr>
-                        <th className="py-2 px-3">Timestamp</th>
-                        <th className="py-2 px-3 text-right">Actual</th>
-                        <th className="py-2 px-3 text-right">Expected</th>
-                        <th className="py-2 px-3 text-right">Perf %</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {historyData.slice().reverse().slice(0, 50).map((row, i) => {
-                        const dt = new Date(row.timestamp);
-                        const isRowNight = row.expected_power_w === 0;
-                        const isRowNoData = row.actual_power_w == null;
-                        
-                        const act = isRowNoData ? '—' : (isRowNight ? '0.0 W' : `${row.actual_power_w.toFixed(1)} W`);
-                        const exp = `${row.expected_power_w.toFixed(1)} W`;
-                        let perf = '—';
-                        if (!isRowNight && !isRowNoData && row.actual_power_w != null && row.expected_power_w > 0) {
-                          perf = `${((row.actual_power_w / row.expected_power_w) * 100).toFixed(1)}%`;
-                        }
-
-                        return (
-                          <tr key={i} className="table-row text-caption">
-                            <td className="table-cell font-mono text-txt">
-                              {dt.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                            </td>
-                            <td className="table-cell font-mono text-right text-txt">{act}</td>
-                            <td className="table-cell-muted font-mono text-right">{exp}</td>
-                            <td className="table-cell font-mono text-right font-medium text-txt">{perf}</td>
-                          </tr>
-                        );
-                      })}
-                      {historyData.length === 0 && (
-                        <tr>
-                          <td colSpan="4" className="py-6 text-center text-txt-muted text-caption">No historical telemetry points found</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
                 </div>
               </div>
             </div>
@@ -514,6 +588,66 @@ const Performance = () => {
                   })}
                 </div>
               </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Slide-over for Historical Logs */}
+      {showLogs && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setShowLogs(false)} />
+          <div className="fixed inset-y-0 right-0 w-full max-w-md bg-surface border-l border-border shadow-2xl z-50 flex flex-col">
+            <div className="p-4 border-b border-border flex justify-between items-center bg-surface-secondary">
+              <div className="flex items-center gap-2">
+                <History className="h-5 w-5 text-txt" />
+                <h3 className="text-body font-semibold text-txt tracking-wider">Historical Logs</h3>
+              </div>
+              <button onClick={() => setShowLogs(false)} className="p-1 text-txt-muted hover:text-txt rounded-md hover:bg-surface-hover transition-colors">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <table className="w-full text-left whitespace-nowrap">
+                <thead className="table-header sticky top-0 z-10 bg-surface shadow-sm">
+                  <tr>
+                    <th className="py-3 px-5">Timestamp</th>
+                    <th className="py-3 px-5 text-right">Actual</th>
+                    <th className="py-3 px-5 text-right">Expected</th>
+                    <th className="py-3 px-5 text-right">Perf %</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {historyData.slice().reverse().map((row, i) => {
+                    const dt = new Date(row.timestamp);
+                    const isRowNight = row.expected_power_w === 0;
+                    const isRowNoData = row.actual_power_w == null;
+                    
+                    const act = isRowNoData ? '—' : (isRowNight ? '0.0 W' : `${row.actual_power_w.toFixed(1)} W`);
+                    const exp = `${row.expected_power_w.toFixed(1)} W`;
+                    let perf = '—';
+                    if (!isRowNight && !isRowNoData && row.actual_power_w != null && row.expected_power_w > 0) {
+                      perf = `${((row.actual_power_w / row.expected_power_w) * 100).toFixed(1)}%`;
+                    }
+
+                    return (
+                      <tr key={i} className="hover:bg-surface-hover transition-colors text-caption">
+                        <td className="py-2.5 px-5 font-mono text-txt">
+                          {dt.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                        <td className="py-2.5 px-5 font-mono text-right text-txt">{act}</td>
+                        <td className="py-2.5 px-5 text-txt-muted font-mono text-right">{exp}</td>
+                        <td className="py-2.5 px-5 font-mono text-right font-medium text-txt">{perf}</td>
+                      </tr>
+                    );
+                  })}
+                  {historyData.length === 0 && (
+                    <tr>
+                      <td colSpan="4" className="py-6 text-center text-txt-muted text-caption">No historical telemetry points found</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </>

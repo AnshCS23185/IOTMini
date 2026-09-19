@@ -124,7 +124,7 @@ const PanelDiagnosticDetail = () => {
           </div>
           
           <div className="flex gap-2.5">
-            <Button variant="outline" size="medium" onClick={() => navigate(`/panels/${panel.id}`)}>View Panel Metrics</Button>
+            <Button variant="outline" size="medium" onClick={() => navigate(`/performance?siteId=${panel.site_id}&panelId=${panel.id}`, { state: { fromDiagnostics: true } })}>View Panel Metrics</Button>
             {canRunDiagnostic && (
               <Button variant="primary" size="medium" onClick={handleRunDiagnostic} disabled={runningDiag} className="w-36">
                 {runningDiag ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : 'Run Diagnostic'}
