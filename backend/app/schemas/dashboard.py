@@ -17,6 +17,7 @@ class DashboardResponse(BaseModel):
     expected_power_w: float
     performance_percentage: Optional[float]
     total_panels: int
+    total_devices: int
     healthy_panels: int
     attention_panels: int
     underperforming_panels: int
