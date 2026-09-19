@@ -1,85 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from sqlalchemy import desc
-from typing import List, Optional
-from app.database import get_db
-from app.core.dependencies import get_current_active_user
-from app.core.permissions import check_panel_access, check_site_access, require_permission
-from app.models.user import User
-from app.models.panel import Panel
-from app.models.site import Site
-from app.models.diagnostics import DiagnosticRecord, Alert
-from app.schemas.diagnostics import DiagnosticResponse, AlertResponse, AnalyticsResponse, TrendResponse, TrendDataPoint, FaultFrequency, PanelAlertSummary, SiteAlertSummary
-from datetime import datetime, timezone, timedelta
-from sqlalchemy import func
-from app.services.diagnostic_service import DiagnosticService
+import os
 
-router = APIRouter(tags=["Diagnostics & Alerts"])
+filepath = r"D:\Project\PanelIQ\IOTMini\backend\app\routes\diagnostics.py"
+with open(filepath, "r") as f:
+    content = f.read()
 
-@router.get("/panels/{panel_id}/diagnostics", response_model=DiagnosticResponse)
-async def get_latest_diagnostic(panel_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_permission("DIAGNOSTICS_VIEW"))):
-    panel = db.query(Panel).filter(Panel.id == panel_id).first()
-    if not panel:
-        raise HTTPException(status_code=404, detail="Panel not found")
-    check_panel_access(current_user, panel, db)
+# Add missing imports
+if "AnalyticsResponse" not in content:
+    content = content.replace(
+        "from app.schemas.diagnostics import DiagnosticResponse, AlertResponse",
+        "from app.schemas.diagnostics import DiagnosticResponse, AlertResponse, AnalyticsResponse, TrendResponse, TrendDataPoint, FaultFrequency, PanelAlertSummary, SiteAlertSummary\nfrom datetime import datetime, timezone, timedelta\nfrom sqlalchemy import func"
+    )
 
-    record = db.query(DiagnosticRecord).filter(
-        DiagnosticRecord.panel_id == panel_id
-    ).order_by(desc(DiagnosticRecord.timestamp)).first()
-
-    if not record:
-        raise HTTPException(status_code=404, detail="No diagnostics found for this panel")
-    return record
-
-@router.get("/panels/{panel_id}/diagnostics/history", response_model=List[DiagnosticResponse])
-async def get_diagnostic_history(panel_id: int, limit: int = 50, db: Session = Depends(get_db), current_user: User = Depends(require_permission("DIAGNOSTICS_VIEW"))):
-    panel = db.query(Panel).filter(Panel.id == panel_id).first()
-    if not panel:
-        raise HTTPException(status_code=404, detail="Panel not found")
-    check_panel_access(current_user, panel, db)
-
-    records = db.query(DiagnosticRecord).filter(
-        DiagnosticRecord.panel_id == panel_id
-    ).order_by(desc(DiagnosticRecord.timestamp)).limit(limit).all()
-
-    return records
-
-@router.get("/sites/{site_id}/alerts", response_model=List[AlertResponse])
-async def get_site_alerts(site_id: int, active_only: bool = True, db: Session = Depends(get_db), current_user: User = Depends(require_permission("DIAGNOSTICS_VIEW"))):
-    site = db.query(Site).filter(Site.id == site_id).first()
-    if not site:
-        raise HTTPException(status_code=404, detail="Site not found")
-    check_site_access(current_user, site, db)
-
-    query = db.query(Alert).filter(Alert.site_id == site_id)
-    if active_only:
-        query = query.filter(Alert.status == "ACTIVE")
-    
-    return query.order_by(desc(Alert.updated_at)).all()
-
-@router.get("/panels/{panel_id}/alerts", response_model=List[AlertResponse])
-async def get_panel_alerts(panel_id: int, active_only: bool = True, db: Session = Depends(get_db), current_user: User = Depends(require_permission("DIAGNOSTICS_VIEW"))):
-    panel = db.query(Panel).filter(Panel.id == panel_id).first()
-    if not panel:
-        raise HTTPException(status_code=404, detail="Panel not found")
-    check_panel_access(current_user, panel, db)
-
-    query = db.query(Alert).filter(Alert.panel_id == panel_id)
-    if active_only:
-        query = query.filter(Alert.status == "ACTIVE")
-    
-    return query.order_by(desc(Alert.updated_at)).all()
-
-@router.post("/panels/{panel_id}/diagnostics/run", response_model=DiagnosticResponse)
-async def run_diagnostic(panel_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_permission("DIAGNOSTICS_RUN"))):
-    panel = db.query(Panel).filter(Panel.id == panel_id).first()
-    if not panel:
-        raise HTTPException(status_code=404, detail="Panel not found")
-    check_panel_access(current_user, panel, db)
-
-    return await DiagnosticService.evaluate_panel(panel, db)
-
-
+new_endpoints = """
 @router.patch("/alerts/{alert_id}/acknowledge", response_model=AlertResponse)
 async def acknowledge_alert(alert_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_permission("DIAGNOSTICS_RUN"))):
     alert = db.query(Alert).filter(Alert.id == alert_id).first()
@@ -206,7 +138,7 @@ async def get_alert_analytics(
             panel_alerts[a.panel_id]["resolved"] += 1
             
     panel_summaries = [
-        PanelAlertSummary(panel_id=pid, active_alerts=v["active"], resolved_alerts=v["resolved"], total_alerts=v["active"] + v["resolved"])
+        PanelAlertSummary(panel_id=pid, active_alerts=v["active"], resolved_alerts=v["resolved"])
         for pid, v in panel_alerts.items()
     ]
     panel_summaries.sort(key=lambda x: x.active_alerts, reverse=True)
@@ -262,7 +194,15 @@ async def get_alert_trend(
                 trend_dict[d]["info"] += 1
                 
     trends = [
-        TrendDataPoint(date=k, critical=v["critical"], warning=v["warning"], info=v["info"], total=v["critical"] + v["warning"] + v["info"])
+        TrendDataPoint(date=k, critical=v["critical"], warning=v["warning"], info=v["info"])
         for k, v in sorted(trend_dict.items())
     ]
     return TrendResponse(trends=trends, days=days)
+"""
+
+if "@router.patch(\"/alerts/{alert_id}/acknowledge\"" not in content:
+    content += "\n" + new_endpoints
+
+with open(filepath, "w") as f:
+    f.write(content)
+print("Endpoints restored!")

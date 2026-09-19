@@ -40,9 +40,54 @@ class AlertResponse(BaseModel):
     consecutive_count: int
     first_detected_at: datetime
     confirmed_at: Optional[datetime]
+    acknowledged_at: Optional[datetime]
+    acknowledged_by_id: Optional[int]
     resolved_at: Optional[datetime]
     created_at: datetime
     updated_at: Optional[datetime]
 
     class Config:
         from_attributes = True
+
+class FaultFrequency(BaseModel):
+    fault_type: str
+    count: int
+
+class PanelAlertSummary(BaseModel):
+    panel_id: int
+    total_alerts: int
+    active_alerts: int
+    resolved_alerts: int
+
+class SiteAlertSummary(BaseModel):
+    site_id: int
+    total_alerts: int
+    active_alerts: int
+    resolved_alerts: int
+    critical: int
+    warning: int
+    info: int
+
+class AnalyticsResponse(BaseModel):
+    total_alerts: int
+    active_alerts: int
+    resolved_alerts: int
+    critical_alerts: int
+    warning_alerts: int
+    info_alerts: int
+    avg_resolution_time_minutes: Optional[float]
+    fastest_recovery_minutes: Optional[float]
+    longest_active_minutes: Optional[float]
+    fault_distribution: List[FaultFrequency]
+    panel_summaries: List[PanelAlertSummary]
+    site_summaries: List[SiteAlertSummary]
+
+class TrendDataPoint(BaseModel):
+    date: str
+    total: int
+    critical: int
+    warning: int
+    info: int
+
+class TrendResponse(BaseModel):
+    trends: List[TrendDataPoint]

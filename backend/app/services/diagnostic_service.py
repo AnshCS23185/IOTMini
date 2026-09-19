@@ -168,8 +168,17 @@ class DiagnosticService:
         
     @staticmethod
     def _update_alert_state(db: Session, diag: DiagnosticRecord):
-        # We only create active alerts for confirmed faults
-        fault_types = ["LOCAL_SHADING", "WEATHER_RELATED", "THERMAL_PERFORMANCE_LOSS", "PANEL_UNDERPERFORMANCE", "DEVICE_OFFLINE"]
+        severity_map = {
+            "DEVICE_OFFLINE": "CRITICAL",
+            "NO_DATA": "CRITICAL",
+            "NO_SOLAR": "INFO",
+            "WEATHER_RELATED": "INFO",
+            "LOCAL_SHADING": "WARNING",
+            "THERMAL_PERFORMANCE_LOSS": "WARNING",
+            "PANEL_UNDERPERFORMANCE": "WARNING"
+        }
+        
+        fault_types = list(severity_map.keys())
         
         active_alert = db.query(Alert).filter(
             Alert.panel_id == diag.panel_id, 
@@ -177,23 +186,22 @@ class DiagnosticService:
         ).first()
         
         if diag.status in fault_types:
-            # We have a fault
+            mapped_severity = severity_map[diag.status]
+            
             if active_alert:
                 if active_alert.fault_type == diag.status:
                     # Same fault continues
-                    if not active_alert.confirmed_at:
-                        active_alert.consecutive_count += 1
-                        if active_alert.consecutive_count >= FAULT_CONFIRMATION_COUNT:
-                            active_alert.confirmed_at = datetime.utcnow()
-                            active_alert.severity = "WARNING"
-                            # Snapshot metrics
-                            active_alert.performance_percentage = diag.performance_percentage
-                            active_alert.actual_power_w = diag.actual_power_w
-                            active_alert.expected_power_w = diag.expected_power_w
-                            active_alert.light_intensity = diag.light_intensity
-                            active_alert.temperature = diag.temperature
-                            active_alert.cloud_cover = diag.cloud_cover
-                            active_alert.precipitation = diag.precipitation
+                    active_alert.consecutive_count += 1
+                    if not active_alert.confirmed_at and active_alert.consecutive_count >= FAULT_CONFIRMATION_COUNT:
+                        active_alert.confirmed_at = datetime.utcnow()
+                        # Snapshot metrics
+                        active_alert.performance_percentage = diag.performance_percentage
+                        active_alert.actual_power_w = diag.actual_power_w
+                        active_alert.expected_power_w = diag.expected_power_w
+                        active_alert.light_intensity = diag.light_intensity
+                        active_alert.temperature = diag.temperature
+                        active_alert.cloud_cover = diag.cloud_cover
+                        active_alert.precipitation = diag.precipitation
                     db.commit()
                 else:
                     # Different fault, resolve old, start new
@@ -204,29 +212,62 @@ class DiagnosticService:
                         panel_id=diag.panel_id,
                         site_id=diag.panel.site_id,
                         fault_type=diag.status,
-                        severity="INFO", # Unconfirmed
+                        severity=mapped_severity,
                         message=diag.reason,
                         status="ACTIVE",
                         consecutive_count=1
                     )
                     db.add(new_alert)
                     db.commit()
+                    db.refresh(new_alert)
+                    
+                    # Phase 4: Notification logic for DIFFERENT fault
+                    if mapped_severity in ["CRITICAL", "WARNING"]:
+                        DiagnosticService._create_notifications_for_alert(db, new_alert)
             else:
                 # No active alert, start one
                 new_alert = Alert(
                     panel_id=diag.panel_id,
                     site_id=diag.panel.site_id,
                     fault_type=diag.status,
-                    severity="INFO", # Unconfirmed
+                    severity=mapped_severity,
                     message=diag.reason,
                     status="ACTIVE",
                     consecutive_count=1
                 )
                 db.add(new_alert)
                 db.commit()
+                db.refresh(new_alert)
+                
+                # Phase 4: Notification logic for NEW fault
+                if mapped_severity in ["CRITICAL", "WARNING"]:
+                    DiagnosticService._create_notifications_for_alert(db, new_alert)
         else:
-            # Healthy, Attention, No Data, No Solar -> resolve active faults
+            # Healthy, Attention -> resolve active faults
             if active_alert:
                 active_alert.status = "RESOLVED"
                 active_alert.resolved_at = datetime.utcnow()
                 db.commit()
+
+    @staticmethod
+    def _create_notifications_for_alert(db: Session, alert: Alert):
+        from app.models.notifications import Notification
+        from app.models.user import User
+        from app.models.site import Site
+        
+        # Get the site's organization to target users
+        site = db.query(Site).filter(Site.id == alert.site_id).first()
+        if not site:
+            return
+            
+        target_users = db.query(User).filter(User.organization_id == site.organization_id).all()
+        for user in target_users:
+            notification = Notification(
+                user_id=user.id,
+                alert_id=alert.id,
+                title=f"{alert.severity} Alert: {alert.fault_type}",
+                message=alert.message or "Panel reported an anomaly.",
+                severity=alert.severity
+            )
+            db.add(notification)
+        db.commit()
