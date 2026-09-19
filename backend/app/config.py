@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     
     OPEN_METEO_URL: str = os.getenv("OPEN_METEO_URL", "https://api.open-meteo.com/v1/forecast")
     PVGIS_URL: str = os.getenv("PVGIS_URL", "https://re.jrc.ec.europa.eu/api/v5_2/PVcalc")
+    REDIS_URL: str = os.getenv("REDIS_URL", "redis://172.24.5.31:6379/0")
     
     OFFLINE_TIMEOUT_MINUTES: int = 5
     WEATHER_CLOUD_THRESHOLD: float = 70.0
