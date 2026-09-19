@@ -29,6 +29,9 @@ def check_site_access(user: User, site: Site, db: Session):
     if user.role_rel and user.role_rel.name == "ADMIN":
         return True
         
+    if site.organization_id != user.organization_id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this site")
+        
     mapping = db.query(UserSite).filter(UserSite.user_id == user.id, UserSite.site_id == site.id).first()
     if not mapping:
         raise HTTPException(status_code=403, detail="Not authorized to access this site")
@@ -39,6 +42,9 @@ def check_panel_access(user: User, panel: Panel, db: Session):
         return True
     if not panel.site:
         raise HTTPException(status_code=403, detail="Panel is not assigned to a site")
+        
+    if panel.site.organization_id != user.organization_id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this panel")
         
     mapping = db.query(UserSite).filter(UserSite.user_id == user.id, UserSite.site_id == panel.site_id).first()
     if not mapping:

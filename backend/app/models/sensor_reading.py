@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Float
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from app.database import Base
 
 class SensorReading(Base):
@@ -16,5 +16,5 @@ class SensorReading(Base):
     light_intensity = Column(Float)
     timestamp = Column(DateTime(timezone=True), nullable=False)
 
-    device = relationship("IoTDevice", backref="sensor_readings")
-    panel = relationship("Panel", backref="sensor_readings")
+    device = relationship("IoTDevice", backref=backref("sensor_readings", cascade="all, delete-orphan"))
+    panel = relationship("Panel", backref=backref("sensor_readings", cascade="all, delete-orphan"))

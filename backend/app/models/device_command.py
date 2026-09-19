@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from app.database import Base
 
 class DeviceCommand(Base):
@@ -21,6 +21,6 @@ class DeviceCommand(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    device = relationship("IoTDevice", backref="commands")
-    panel = relationship("Panel", backref="device_commands")
-    requester = relationship("User", backref="commands_requested")
+    device = relationship("IoTDevice", backref=backref("commands", cascade="all, delete-orphan"))
+    panel = relationship("Panel", backref=backref("device_commands", cascade="all, delete-orphan"))
+    requester = relationship("User", backref=backref("commands_requested", cascade="all, delete-orphan"))

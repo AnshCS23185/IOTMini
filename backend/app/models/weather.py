@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, Float, DateTime, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from app.database import Base
 
 class WeatherReading(Base):
@@ -14,4 +14,4 @@ class WeatherReading(Base):
     solar_radiation = Column(Float)
     timestamp = Column(DateTime(timezone=True), nullable=False)
 
-    site = relationship("Site", backref="weather_readings")
+    site = relationship("Site", backref=backref("weather_readings", cascade="all, delete-orphan"))

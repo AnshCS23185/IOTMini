@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, Float, String, DateTime, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from app.database import Base
 
 class ExpectedPower(Base):
@@ -11,4 +11,4 @@ class ExpectedPower(Base):
     source = Column(String, default="PVGIS")
     timestamp = Column(DateTime(timezone=True), nullable=False)
 
-    panel = relationship("Panel", backref="expected_power_readings")
+    panel = relationship("Panel", backref=backref("expected_power_readings", cascade="all, delete-orphan"))

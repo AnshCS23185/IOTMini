@@ -65,7 +65,7 @@ def get_sites(db: Session = Depends(get_db), current_user: User = Depends(requir
     if current_user.role_rel and current_user.role_rel.name == "ADMIN":
         return db.query(Site).all()
     user_sites = db.query(UserSite.site_id).filter(UserSite.user_id == current_user.id).subquery()
-    return db.query(Site).filter(Site.id.in_(user_sites)).all()
+    return db.query(Site).filter(Site.id.in_(user_sites), Site.organization_id == current_user.organization_id).all()
 
 @router.get("/{site_id}", response_model=SiteResponse)
 def get_site(site_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_permission("SITE_VIEW"))):

@@ -47,7 +47,7 @@ def get_panels_summary(
             query = query.filter(Panel.site_id == site_id)
     else:
         user_sites = db.query(UserSite.site_id).filter(UserSite.user_id == current_user.id).subquery()
-        query = query.filter(Panel.site_id.in_(user_sites))
+        query = query.join(Site).filter(Panel.site_id.in_(user_sites), Site.organization_id == current_user.organization_id)
         if site_id:
             query = query.filter(Panel.site_id == site_id)
 
@@ -103,7 +103,7 @@ def get_all_panels(
             query = query.filter(Panel.site_id == site_id)
     else:
         user_sites = db.query(UserSite.site_id).filter(UserSite.user_id == current_user.id).subquery()
-        query = query.filter(Panel.site_id.in_(user_sites))
+        query = query.join(Site).filter(Panel.site_id.in_(user_sites), Site.organization_id == current_user.organization_id)
         if site_id:
             query = query.filter(Panel.site_id == site_id)
 
