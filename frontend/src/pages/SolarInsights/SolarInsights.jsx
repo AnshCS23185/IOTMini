@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getSites } from '../../api/sites';
 import { apiClient } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
@@ -36,26 +36,49 @@ const getWeatherDescription = (code) => {
 
 const SolarInsights = () => {
   const { user } = useAuth();
+  const isAdmin = user?.role?.toUpperCase() === 'ADMIN';
   const navigate = useNavigate();
+  
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedSiteId = searchParams.get('siteId') || '';
+  const setSelectedSiteId = (id) => {
+    setSearchParams(prev => {
+      if (id) prev.set('siteId', id);
+      else prev.delete('siteId');
+      return prev;
+    }, { replace: true });
+  };
+
+  const [sites, setSites] = useState([]);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    const initSites = async () => {
+      try {
+        const sitesList = await getSites();
+        setSites(sitesList);
+        
+        if (sitesList.length > 0 && !searchParams.get('siteId')) {
+          setSelectedSiteId(sitesList[0].id);
+        }
+      } catch (err) {
+        setError("Failed to load authorized sites.");
+        setLoading(false);
+      }
+    };
+    initSites();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedSiteId) return;
+
     const fetchInsights = async () => {
       try {
         setLoading(true);
-        // Get the client's site
-        const sites = await getSites();
-        if (!sites || sites.length === 0) {
-          setError("No site assigned. Please contact support.");
-          return;
-        }
-        
-        const siteId = sites[0].id;
-        
-        // Fetch insights
-        const data = await apiClient(`/sites/${siteId}/solar-insights`);
+        setError(null);
+        const data = await apiClient(`/sites/${selectedSiteId}/solar-insights`);
         setData(data);
       } catch (err) {
         console.error("Error fetching solar insights:", err);
@@ -66,7 +89,7 @@ const SolarInsights = () => {
     };
     
     fetchInsights();
-  }, []);
+  }, [selectedSiteId]);
 
   if (loading) {
     return (
@@ -104,15 +127,33 @@ const SolarInsights = () => {
   return (
     <div className="flex flex-col h-full bg-background overflow-y-auto page-container gap-5">
       {/* Page Header */}
-      <div className="flex flex-col">
-        <h1 className="text-[28px] font-bold text-txt leading-tight tracking-tight">Solar Insights</h1>
-        <p className="text-[14px] text-txt-muted mt-0.5">Real-time environmental conditions and estimated solar generation for your site.</p>
-        
-        <div className="flex items-center gap-2 mt-3 text-small text-txt font-medium bg-surface-elevated py-1.5 px-3 rounded-md w-fit border border-border shadow-sm">
-          <MapPin className="h-4 w-4 text-primary" />
-          {data.site_name}
-          <span className="text-txt-muted font-normal ml-1">({data.latitude}°, {data.longitude}°)</span>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex flex-col">
+          <h1 className="text-[28px] font-bold text-txt leading-tight tracking-tight">Solar Insights</h1>
+          <p className="text-[14px] text-txt-muted mt-0.5">Real-time environmental conditions and estimated solar generation for your site.</p>
         </div>
+        
+        {isAdmin ? (
+          <div className="flex items-center bg-surface border border-border rounded-lg px-3 h-[38px] shrink-0">
+            <MapPin className="h-4 w-4 text-txt-muted mr-2" />
+            <select 
+              className={`bg-transparent text-small font-medium focus:outline-none cursor-pointer ${!selectedSiteId ? 'text-txt-muted' : 'text-txt'}`}
+              value={selectedSiteId}
+              onChange={(e) => setSelectedSiteId(e.target.value)}
+            >
+              <option value="" disabled className="bg-surface text-txt-muted">Select Site ▾</option>
+              {sites.map(s => (
+                <option key={s.id} value={s.id} className="bg-surface text-txt">{s.name}</option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-small text-txt font-medium bg-surface-elevated py-1.5 px-3 rounded-md w-fit border border-border shadow-sm shrink-0">
+            <MapPin className="h-4 w-4 text-primary" />
+            {data.site_name}
+            <span className="text-txt-muted font-normal ml-1">({data.latitude}°, {data.longitude}°)</span>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">

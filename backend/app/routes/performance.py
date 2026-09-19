@@ -122,7 +122,7 @@ async def get_site_performance(site_id: int, db: Session = Depends(get_db), curr
     }
 
 @router.get("/panels/{panel_id}/performance/history", response_model=List[PanelPerformanceResponse])
-def get_performance_history(
+async def get_performance_history(
     panel_id: int, 
     start_time: Optional[datetime] = Query(None, alias="from"),
     end_time: Optional[datetime] = Query(None, alias="to"),
@@ -155,12 +155,27 @@ def get_performance_history(
             s_query = s_query.filter(SensorReading.timestamp <= end_time)
         readings = s_query.order_by(desc(SensorReading.timestamp)).limit(limit).all()
         if readings:
-            exp_val = 0.5
-            cached_exp = db.query(ExpectedPower).filter(ExpectedPower.panel_id == panel_id).order_by(desc(ExpectedPower.timestamp)).first()
-            if cached_exp and cached_exp.expected_power_w > 0:
-                exp_val = cached_exp.expected_power_w
+            profile_map = await PVGISService.get_panel_daily_profile(panel, panel.site)
             records = []
             for r in readings:
+                # Find closest 15-minute interval in profile_map for this reading's UTC timestamp
+                reading_utc = r.timestamp.astimezone(timezone.utc) if r.timestamp.tzinfo else r.timestamp.replace(tzinfo=timezone.utc)
+                r_minutes = reading_utc.hour * 60 + reading_utc.minute
+                
+                exp_val = 0.0
+                if profile_map:
+                    min_diff = float('inf')
+                    closest_val = 0.0
+                    for p_time, p_val in profile_map.items():
+                        h, m = map(int, p_time.split(':'))
+                        p_minutes = h * 60 + m
+                        diff = abs(r_minutes - p_minutes)
+                        diff = min(diff, 1440 - diff)
+                        if diff < min_diff:
+                            min_diff = diff
+                            closest_val = p_val
+                    exp_val = closest_val
+                
                 pct, stat = PerformanceService.calculate_performance(r.power, exp_val)
                 records.append(PanelPerformance(
                     id=r.id,
